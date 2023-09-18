@@ -6,7 +6,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from utils import Wrapper, generate_reconstructions, normalize
+from utils import generate_reconstructions, normalize
 
 from tqdm import tqdm
 
@@ -15,6 +15,8 @@ from autoattack import AutoAttack
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument('-model', type=str, default='resnet50', help='model name')
+    parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-name', type=str, default='cs-test', help='study name')
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
@@ -41,10 +43,7 @@ if __name__ == '__main__':
     print(f'Loaded study with parameters: {study.best_params}')
 
     # load model
-    weights = torchvision.models.Swin_B_Weights.DEFAULT
-    preprocess = weights.transforms(antialias=True)
-    raw_model = torchvision.models.swin_b(weights=weights)
-    model = Wrapper(preprocess, raw_model).to(device)
+    model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
     adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version=args.version)
@@ -57,8 +56,8 @@ if __name__ == '__main__':
         x_rec = generate_reconstructions(normalize(x_adv), **study.best_params)
         x_orig = generate_reconstructions(normalize(x_batch.to(device)), **study.best_params)
 
-        y_pred_orig = model(x_orig).cpu().detach().numpy()
-        y_pred = model(x_rec).cpu().detach().numpy()
+        y_pred_orig = model(x_orig.float()).cpu().detach().numpy()
+        y_pred = model(x_rec.float()).cpu().detach().numpy()
 
         orig_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
         adv_rec_acc += (y_pred.argmax(axis=1) == y_batch.numpy()).sum()

@@ -3,33 +3,6 @@ import pytorch_wavelets
 import torch
 import numpy as np
 
-class Wrapper(torch.nn.Module):
-    def __init__(self, preprocess, model):
-        super().__init__()
-
-        self.preprocess = preprocess
-        self.model = model
-    
-    def forward(self, x):
-        return self.model(self.preprocess(x))
-
-class Defense(torch.nn.Module):
-    def __init__(self, preprocess, model, study):
-        super().__init__()
-
-        self.preprocess = preprocess
-        self.model = model
-
-        self.method = study.best_params['wavelet']
-        self.undersample_rate = study.best_params['undersample_rate']
-        self.levels = study.best_params['levels']
-        self.lam = study.best_params['lam']
-        self.lam_decay = study.best_params['lam_decay']
-    
-    def forward(self, x):
-        x_hat = generate_reconstructions(normalize(x.cpu()), self.undersample_rate, self.method, self.levels, self.lam, self.lam_decay).to(x.device)
-        return self.model(self.preprocess(x_hat))
-
 def dwt(x, levels, method='bior1.3'):
     xfm = pytorch_wavelets.DWT(J=levels, wave=method, mode='symmetric')
     return xfm(x.float())

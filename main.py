@@ -13,20 +13,22 @@ import torchvision.transforms as transforms
 from art.attacks.evasion import AutoProjectedGradientDescent
 from art.estimators.classification import PyTorchClassifier
 
-from utils import generate_reconstructions, normalize, Wrapper
+from utils import generate_reconstructions, normalize
 
 from tqdm import tqdm
 
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument('-model', type=str, default='resnet50', help='model name')
+    parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-name', type=str, default='cs-test', help='study name')
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
+    parser.add_argument('-trials', type=int, default=100, help='number of trials')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
-    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
-    parser.add_argument('-trials', type=int, default=100, help='number of trials')
+    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
 
     args = parser.parse_args()
 
@@ -35,10 +37,7 @@ if __name__ == '__main__':
     print(f'Device: {device}')
 
     # load model
-    weights = torchvision.models.Swin_B_Weights.DEFAULT
-    preprocess = weights.transforms(antialias=True)
-    raw_model = torchvision.models.swin_b(weights=weights)
-    model = Wrapper(preprocess, raw_model).to(device)
+    model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     classifier = PyTorchClassifier(
         model=model,
@@ -74,7 +73,7 @@ if __name__ == '__main__':
                 x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
                 x_rec = generate_reconstructions(normalize(x_adv), undersample_rate, method, levels, lam, lam_decay)
 
-                y_pred_rec = model(x_rec.to(device)).cpu().detach().numpy()
+                y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
                 adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
                 total += x_batch.shape[0]
 
@@ -92,5 +91,5 @@ if __name__ == '__main__':
         return adv_rec_acc/total
     
     # start the study
-    study = optuna.create_study(study_name=args.name, storage=args.result, load_if_exists=True, direction='maximize')
+    study = optuna.create_study(study_name=args.name, storage=args.results, load_if_exists=True, direction='maximize')
     study.optimize(objective, n_trials=args.trials)
