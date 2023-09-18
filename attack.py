@@ -1,5 +1,7 @@
 import optuna
 
+import argparse
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -11,20 +13,31 @@ from tqdm import tqdm
 from autoattack import AutoAttack
 
 if __name__ == '__main__':
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-name', type=str, default='cs-test', help='study name')
+    parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
+    parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
+    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
+    parser.add_argument('-bs', type=int, default=16, help='batch size')
+
+    args = parser.parse_args()
+
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(f'Device: {device}')
 
     # load data
-    imagenet_data = torchvision.datasets.ImageNet('/scratch/jpeck/imagenet', split='val',
+    imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
                                               transform=transforms.Compose([
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
                                                   transforms.ToTensor()]))
-    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=16, shuffle=True, num_workers=1)
+    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
     
     # load best parameters
-    study = optuna.load_study(study_name='cs-test', storage='sqlite:///results.db')
+    study = optuna.load_study(study_name=args.name, storage=args.results)
     print(f'Loaded study with parameters: {study.best_params}')
 
     # load model
@@ -34,7 +47,7 @@ if __name__ == '__main__':
     model = Wrapper(preprocess, raw_model).to(device)
 
     # attack the model
-    adversary = AutoAttack(model, norm='Linf', eps=4/255, version='plus')
+    adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version=args.version)
     total = 0
     orig_acc = 0
     adv_rec_acc = 0

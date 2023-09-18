@@ -1,5 +1,7 @@
 import numpy as np
 
+import argparse
+
 import optuna
 
 import pywt
@@ -16,6 +18,18 @@ from utils import generate_reconstructions, normalize, Wrapper
 from tqdm import tqdm
 
 if __name__ == '__main__':
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-name', type=str, default='cs-test', help='study name')
+    parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
+    parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
+    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
+    parser.add_argument('-bs', type=int, default=16, help='batch size')
+    parser.add_argument('-trials', type=int, default=100, help='number of trials')
+
+    args = parser.parse_args()
+
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(f'Device: {device}')
@@ -35,12 +49,12 @@ if __name__ == '__main__':
     )
 
     # load data
-    imagenet_data = torchvision.datasets.ImageNet('/scratch/jpeck/imagenet', split='val',
+    imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
                                               transform=transforms.Compose([
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
                                                   transforms.ToTensor()]))
-    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=16, shuffle=True, num_workers=1)
+    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
 
     # define the objective function
     def objective(trial):
@@ -53,7 +67,7 @@ if __name__ == '__main__':
         adv_rec_acc = 0
         total = 0
         max_batches = 100
-        attack = AutoProjectedGradientDescent(estimator=classifier, eps=4/255, norm=np.inf)
+        attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
         try:
             for step, (x_batch, y_batch) in enumerate(progbar):
@@ -78,5 +92,5 @@ if __name__ == '__main__':
         return adv_rec_acc/total
     
     # start the study
-    study = optuna.create_study(study_name='cs-test', storage='sqlite:///results.db', load_if_exists=True, direction='maximize')
-    study.optimize(objective, n_trials=100)
+    study = optuna.create_study(study_name=args.name, storage=args.result, load_if_exists=True, direction='maximize')
+    study.optimize(objective, n_trials=args.trials)
