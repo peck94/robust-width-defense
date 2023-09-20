@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from autoattack import AutoAttack
 
-from reconstruction import RandomSubsampling
+from reconstruction import RandomSubsampling, FourierSubsampling
 
 if __name__ == '__main__':
     # parse arguments
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     
     # load best parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
-    reconstructor = RandomSubsampling(**study.best_params)
+    reconstructor = FourierSubsampling(**study.best_params)
     print(f'Loaded study with parameters: {study.best_params}')
 
     # load model
