@@ -6,11 +6,13 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from utils import generate_reconstructions, normalize, Wrapper
+from utils import Wrapper
 
 from tqdm import tqdm
 
 from autoattack import AutoAttack
+
+from reconstruction import RandomSubsampling
 
 if __name__ == '__main__':
     # parse arguments
@@ -40,6 +42,7 @@ if __name__ == '__main__':
     
     # load best parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
+    reconstructor = RandomSubsampling(**study.best_params)
     print(f'Loaded study with parameters: {study.best_params}')
 
     # load model
@@ -47,7 +50,7 @@ if __name__ == '__main__':
 
     # attack the model
     if args.adapt:
-        defense = Wrapper(model, **study.best_params).to(device)
+        defense = Wrapper(model, reconstructor).to(device)
         adversary = AutoAttack(defense, norm='Linf', eps=args.eps/255, version='rand')
     else:
         adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version='standard')
@@ -63,8 +66,8 @@ if __name__ == '__main__':
             y_pred_orig = defense(x_batch.to(device)).cpu().detach().numpy()
             y_pred = defense(x_adv).cpu().detach().numpy()
         else:
-            x_orig = generate_reconstructions(normalize(x_batch.to(device)), **study.best_params)
-            x_rec = generate_reconstructions(normalize(x_adv), **study.best_params)
+            x_orig = reconstructor.generate(x_batch.to(device))
+            x_rec = reconstructor.generate(x_adv)
 
             y_pred_orig = model(x_orig.float()).cpu().detach().numpy()
             y_pred = model(x_rec.float()).cpu().detach().numpy()

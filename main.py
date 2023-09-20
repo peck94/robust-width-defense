@@ -13,7 +13,7 @@ import torchvision.transforms as transforms
 from art.attacks.evasion import AutoProjectedGradientDescent
 from art.estimators.classification import PyTorchClassifier
 
-from utils import generate_reconstructions, normalize
+from reconstruction import RandomSubsampling
 
 from tqdm import tqdm
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     # define the objective function
     def objective(trial):
-        method = trial.suggest_categorical('wavelet', pywt.wavelist())
+        wavelet = trial.suggest_categorical('wavelet', pywt.wavelist())
         undersample_rate = trial.suggest_float('undersample_rate', 0.25, 1)
         levels = trial.suggest_int('levels', 1, 10)
         lam = trial.suggest_float('lam', 0, 1)
@@ -68,10 +68,11 @@ if __name__ == '__main__':
         max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
+        reconstructor = RandomSubsampling(undersample_rate, wavelet, levels, lam, lam_decay)
         try:
             for step, (x_batch, y_batch) in enumerate(progbar):
                 x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
-                x_rec = generate_reconstructions(normalize(x_adv), undersample_rate, method, levels, lam, lam_decay)
+                x_rec = reconstructor.generate(x_adv)
 
                 y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
                 adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
