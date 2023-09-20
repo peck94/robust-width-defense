@@ -57,18 +57,14 @@ if __name__ == '__main__':
 
     # define the objective function
     def objective(trial):
-        wavelet = trial.suggest_categorical('wavelet', pywt.wavelist())
-        undersample_rate = trial.suggest_float('undersample_rate', 0.25, 1)
-        levels = trial.suggest_int('levels', 1, 10)
-        lam = trial.suggest_float('lam', 0, 1)
-        lam_decay = trial.suggest_float('lam_decay', 0.9, 1)
+        RandomSubsampling.initialize_trial(trial)
+        reconstructor = RandomSubsampling(**trial.params)
 
         adv_rec_acc = 0
         total = 0
         max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
-        reconstructor = RandomSubsampling(undersample_rate, wavelet, levels, lam, lam_decay)
         try:
             for step, (x_batch, y_batch) in enumerate(progbar):
                 x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))

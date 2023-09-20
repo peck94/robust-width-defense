@@ -1,10 +1,15 @@
 import numpy as np
 import torch
+import pywt
 from utils import dwt, idwt, hard_thresh, normalize
 
 class Reconstruction:
     def __init__(self, tol=1e-4):
         self.tol = tol
+    
+    @staticmethod
+    def initialize_trial(trial):
+        pass
 
     def generate(self, originals):
         pass
@@ -13,11 +18,19 @@ class RandomSubsampling(Reconstruction):
     def __init__(self, undersample_rate=0.5, wavelet='db3', levels=3, lam=0.4, lam_decay=0.995, tol=1e-4):
         super().__init__(tol)
 
-        self.undersample_rate = 0.5
+        self.undersample_rate = undersample_rate
         self.wavelet = wavelet
         self.levels = levels
         self.lam = lam
         self.lam_decay = lam_decay
+    
+    @staticmethod
+    def initialize_trial(trial):
+        trial.suggest_categorical('wavelet', pywt.wavelist())
+        trial.suggest_float('undersample_rate', 0.25, 1)
+        trial.suggest_int('levels', 1, 10)
+        trial.suggest_float('lam', 0, 1)
+        trial.suggest_float('lam_decay', 0.9, 1)
     
     def generate(self, originals):
         # create mask
