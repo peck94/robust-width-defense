@@ -5,7 +5,7 @@ from torch.fft import fft2, ifft2
 
 import pywt
 
-from utils import dwt, idwt, hard_thresh, normalize
+from utils import dwt, idwt, hard_thresh, normalize, test_wavelet
 
 class Subsampler:
     def __init__(self, undersample_rate, **kwargs):
@@ -80,7 +80,7 @@ class Reconstruction:
     def initialize_trial(trial):
         trial.suggest_float('undersample_rate', 0.25, 1)
         trial.suggest_categorical('subsample', ['random', 'fourier'])
-        trial.suggest_categorical('method', ['wavelet', 'fourier'])
+        trial.suggest_categorical('method', ['wavelet', 'wavelet'])
         trial.suggest_float('lam', 0, 1)
         trial.suggest_float('lam_decay', 0.9, 1)
 
@@ -128,11 +128,11 @@ class WaveletMethod(Method):
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', pywt.wavelist())
+        trial.suggest_categorical('wavelet', [w for w in pywt.wavelist() if test_wavelet(w)])
         trial.suggest_int('levels', 1, 10)
     
     def initialize(self, y):
-        self.Yh, self.Yl = dwt(y, self.levels, self.wavelet)
+        self.Yl, self.Yh = dwt(y, self.levels, self.wavelet)
     
     def reconstruct(self, x_hat):
         Xl, Xh = dwt(x_hat, self.levels, self.wavelet)

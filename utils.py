@@ -1,5 +1,6 @@
 import torch
 import pytorch_wavelets
+import pywt
 
 class Wrapper(torch.nn.Module):
     def __init__(self, model, reconstructor):
@@ -11,6 +12,13 @@ class Wrapper(torch.nn.Module):
     def forward(self, x):
         x_hat = self.reconstructor.generate(normalize(x.float()))
         return self.model(x_hat.float())
+
+def test_wavelet(w):
+    try:
+        pywt.Wavelet(w)
+        return True
+    except:
+        return False
 
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())

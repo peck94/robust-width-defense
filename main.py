@@ -71,7 +71,6 @@ if __name__ == '__main__':
         max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
-        #try:
         for step, (x_batch, y_batch) in enumerate(progbar):
             x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
             x_rec = reconstructor.generate(x_adv)
@@ -88,8 +87,6 @@ if __name__ == '__main__':
 
             if step >= max_batches - 1:
                 break
-        #except:
-        #    raise optuna.TrialPruned()
         
         return adv_rec_acc/total
     
