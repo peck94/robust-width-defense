@@ -80,7 +80,7 @@ class Reconstruction:
     def initialize_trial(trial):
         trial.suggest_float('undersample_rate', 0.25, 1)
         trial.suggest_categorical('subsample', ['random', 'fourier'])
-        trial.suggest_categorical('method', ['wavelet', 'wavelet'])
+        trial.suggest_categorical('method', ['wavelet', 'fourier'])
         trial.suggest_float('lam', 0, 1)
         trial.suggest_float('lam_decay', 0.9, 1)
 
