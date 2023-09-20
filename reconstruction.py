@@ -96,7 +96,7 @@ class Reconstruction:
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            x_hat = self.method.reconstruct(x_hat, lam)
+            x_hat = hard_thresh(self.method.reconstruct(x_hat), lam)
             x_hat = torch.clamp(x_hat, 0, 1)
 
             lam *= self.lam_decay
@@ -134,15 +134,14 @@ class WaveletMethod(Method):
     def initialize(self, y):
         self.Yh, self.Yl = dwt(y, self.levels, self.wavelet)
     
-    def reconstruct(self, x_hat, lam):
+    def reconstruct(self, x_hat):
         Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
         Zl = self.Yl - Xl
         Zh = [yh - xh for yh, xh in zip(self.Yh, Xh)]
 
         z = idwt((Zl, Zh), self.wavelet)
-        x_hat = hard_thresh(x_hat + z, lam)
 
-        return x_hat
+        return x_hat + z
 
 class FourierMethod(Method):
     def __init__(self, **kwargs):
@@ -155,8 +154,7 @@ class FourierMethod(Method):
     def initialize(self, y):
         self.y = y
     
-    def reconstruct(self, x_hat, lam):
-        x_hat = hard_thresh(x_hat + torch.real(ifft2(self.y - fft2(x_hat))), lam)
-        x_hat = torch.clamp(x_hat, 0, 1)
+    def reconstruct(self, x_hat):
+        x_hat = x_hat + torch.real(ifft2(self.y - fft2(x_hat)))
 
         return x_hat
