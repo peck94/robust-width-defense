@@ -71,12 +71,11 @@ class RandomSubsampling(Reconstruction):
 
 
 class FourierSubsampling(Reconstruction):
-    def __init__(self, undersample_rate=0.5, wavelet='db3', levels=3, lam=0.4, lam_decay=0.995, tol=1e-4):
+    def __init__(self, undersample_rate=0.5, wavelet='db3', lam=0.4, lam_decay=0.995, tol=1e-4):
         super().__init__(tol)
 
         self.undersample_rate = undersample_rate
         self.wavelet = wavelet
-        self.levels = levels
         self.lam = lam
         self.lam_decay = lam_decay
     
@@ -97,21 +96,16 @@ class FourierSubsampling(Reconstruction):
                     )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
         # undersample the signals
-        y_hat = fft2(normalize(originals)) * mask
-        y = torch.real(ifft2(y_hat))
+        y = fft2(normalize(originals)) * mask
         
         # reconstruct the signals
-        x_hat = torch.clone(y)
+        x_hat = torch.zeros_like(y)
         err = np.inf
         lam = self.lam
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            z = fft2(x_hat)
-            z = hard_thresh(z, lam)
-            z = y_hat + z * (1 - mask)
-            x_hat = torch.real(ifft2(z))
-            x_hat = torch.clamp(x_hat, 0, 1)
+            x_hat = hard_thresh(x_hat + torch.real(ifft2(y - fft2(x_hat))), lam)
 
             lam *= self.lam_decay
 
