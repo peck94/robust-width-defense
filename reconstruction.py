@@ -48,18 +48,21 @@ class RandomSubsampling(Reconstruction):
 
         # undersample the signals
         y = normalize(originals) * mask
-        
+        Yl, Yh = dwt(y, self.levels, self.wavelet)
+
         # reconstruct the signals
-        x_hat = torch.clone(y)
+        x_hat = torch.zeros_like(y)
         err = np.inf
         lam = self.lam
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            Yl, Yh = dwt(x_hat, self.levels, self.wavelet)
-            Yl, Yh = hard_thresh(Yl, lam), [hard_thresh(c, lam) for c in Yh]
-            x_hat = idwt((Yl, Yh), self.wavelet)
+            Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
+            Zl = Yl - Xl
+            Zh = [yh - xh for yh, xh in zip(Yh, Xh)]
 
+            z = idwt((Zl, Zh), self.wavelet)
+            x_hat = hard_thresh(x_hat + z, lam)
             x_hat = y + x_hat * (1 - mask)
             x_hat = torch.clamp(x_hat, 0, 1)
 
@@ -68,7 +71,6 @@ class RandomSubsampling(Reconstruction):
             err = np.square(x_hat.cpu().detach().numpy() - x_old).mean()
 
         return x_hat
-
 
 class FourierSubsampling(Reconstruction):
     def __init__(self, undersample_rate=0.5, wavelet='db3', lam=0.4, lam_decay=0.995, tol=1e-4):
