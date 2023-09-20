@@ -67,6 +67,8 @@ if __name__ == '__main__':
         c.initialize_trial(trial)
         reconstructor = c(**trial.params)
 
+        print(f'Running trial with params: {trial.params}')
+
         adv_rec_acc = 0
         total = 0
         max_batches = 100
