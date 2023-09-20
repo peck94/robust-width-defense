@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from autoattack import AutoAttack
 
-from reconstruction import RandomSubsampling, FourierSubsampling
+from reconstruction import Reconstruction
 
 if __name__ == '__main__':
     # parse arguments
@@ -25,7 +25,6 @@ if __name__ == '__main__':
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
-    parser.add_argument('-method', choices=['random', 'fourier'], default='fourier', help='subsampling method')
 
     args = parser.parse_args()
 
@@ -44,9 +43,9 @@ if __name__ == '__main__':
     # load best parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
     if args.method == 'random':
-        reconstructor = RandomSubsampling(**study.best_params)
+        reconstructor = Reconstruction(**study.best_params)
     elif args.method == 'fourier':
-        reconstructor = FourierSubsampling(**study.best_params)
+        reconstructor = Reconstruction(**study.best_params)
     else:
         raise ValueError(f'Unsupported method: {args.method}')
     print(f'Loaded study with parameters: {study.best_params}')

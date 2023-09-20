@@ -13,7 +13,7 @@ import torchvision.transforms as transforms
 from art.attacks.evasion import AutoProjectedGradientDescent
 from art.estimators.classification import PyTorchClassifier
 
-from reconstruction import RandomSubsampling, FourierSubsampling
+from reconstruction import Reconstruction
 
 from tqdm import tqdm
 
@@ -29,7 +29,6 @@ if __name__ == '__main__':
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
-    parser.add_argument('-method', choices=['random', 'fourier'], default='fourier', help='subsampling method')
 
     args = parser.parse_args()
 
@@ -58,14 +57,12 @@ if __name__ == '__main__':
 
     # define the objective function
     def objective(trial):
-        if args.method == 'random':
-            c = RandomSubsampling
-        elif args.method == 'fourier':
-            c = FourierSubsampling
-        else:
-            raise ValueError(f'Unsupported method: {args.method}')
-        c.initialize_trial(trial)
-        reconstructor = c(**trial.params)
+        Reconstruction.initialize_trial(trial)
+
+        method = Reconstruction.get_method(trial.params['method'])
+        method.initialize_trial(trial)
+
+        reconstructor = Reconstruction(**trial.params)
 
         print(f'Running trial with params: {trial.params}')
 
@@ -74,25 +71,25 @@ if __name__ == '__main__':
         max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
-        try:
-            for step, (x_batch, y_batch) in enumerate(progbar):
-                x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
-                x_rec = reconstructor.generate(x_adv)
+        #try:
+        for step, (x_batch, y_batch) in enumerate(progbar):
+            x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
+            x_rec = reconstructor.generate(x_adv)
 
-                y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
-                adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
-                total += x_batch.shape[0]
+            y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
+            adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
+            total += x_batch.shape[0]
 
-                progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total})
+            progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total})
 
-                trial.report(adv_rec_acc/total, step)
-                if trial.should_prune():
-                    raise optuna.TrialPruned()
+            trial.report(adv_rec_acc/total, step)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
 
-                if step >= max_batches - 1:
-                    break
-        except:
-            raise optuna.TrialPruned()
+            if step >= max_batches - 1:
+                break
+        #except:
+        #    raise optuna.TrialPruned()
         
         return adv_rec_acc/total
     

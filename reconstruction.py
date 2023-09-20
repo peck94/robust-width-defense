@@ -7,21 +7,18 @@ import pywt
 
 from utils import dwt, idwt, hard_thresh, normalize
 
-class Reconstruction:
-    def __init__(self, undersample_rate=0.5, subsample='fourier', tol=1e-4):
+class Subsampler:
+    def __init__(self, undersample_rate, **kwargs):
         self.undersample_rate = undersample_rate
-        self.tol = tol
-        self.subsample_type = subsample
+
+    def __call__(self, originals):
+        return originals
+
+class RandomSubsampler(Subsampler):
+    def __init__(self, undersample_rate, **kwargs):
+        super().__init__(undersample_rate, **kwargs)
     
-    @staticmethod
-    def initialize_trial(trial):
-        trial.suggest_float('undersample_rate', 0.25, 1)
-        trial.suggest_categorical('subsample', ['random', 'fourier'])
-
-    def generate(self, originals):
-        pass
-
-    def subsample(self, originals):
+    def __call__(self, originals):
         # create mask
         n = np.prod(originals.shape[2:])
         m = int(n * self.undersample_rate)
@@ -32,34 +29,65 @@ class Reconstruction:
                     )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
         # undersample the signals
-        if self.subsample_type == 'random':
-            return normalize(originals) * mask
-        elif self.subsample_type == 'fourier':
-            return torch.real(fft2(normalize(originals)) * mask)
-        else:
-            raise ValueError(f'Unsupported subsampling method: {self.subsample}')
+        return normalize(originals) * mask
 
-class RandomSubsampling(Reconstruction):
-    def __init__(self, wavelet='db3', levels=3, lam=0.4, lam_decay=0.995, **kwargs):
-        super().__init__(**kwargs)
+class FourierSubsampler(Subsampler):
+    def __init__(self, undersample_rate, **kwargs):
+        super().__init__(undersample_rate, **kwargs)
+    
+    def __call__(self, originals):
+        # create mask
+        n = np.prod(originals.shape[2:])
+        m = int(n * self.undersample_rate)
+        mask = torch.from_numpy(np.random.permutation(
+                    np.concatenate(
+                        (np.ones(m),
+                        np.zeros(n - m))
+                    )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
-        self.wavelet = wavelet
-        self.levels = levels
+        # undersample the signals
+        return torch.real(fft2(normalize(originals)) * mask)
+
+class Reconstruction:
+    def __init__(self, undersample_rate=0.5, subsample='fourier', method='fourier', lam=0.9, lam_decay=0.995, tol=1e-4, **kwargs):
+        self.undersample_rate = undersample_rate
+        self.tol = tol
         self.lam = lam
         self.lam_decay = lam_decay
+        
+        self.subsampler = Reconstruction.get_subsampler(subsample)(undersample_rate, **kwargs)
+        self.method = Reconstruction.get_method(method)(**kwargs)
+    
+    @staticmethod
+    def get_subsampler(subsample):
+        if subsample == 'fourier':
+            return FourierSubsampler
+        elif subsample == 'random':
+            return RandomSubsampler
+        else:
+            raise ValueError(f'Unsupported subsampler: {subsample}')
+
+    @staticmethod
+    def get_method(method):
+        if method == 'fourier':
+            return FourierMethod
+        elif method == 'wavelet':
+            return WaveletMethod
+        else:
+            raise ValueError(f'Unsupported method: {method}')
     
     @staticmethod
     def initialize_trial(trial):
-        Reconstruction.initialize_trial(trial)
-        trial.suggest_categorical('wavelet', pywt.wavelist())
-        trial.suggest_int('levels', 1, 10)
+        trial.suggest_float('undersample_rate', 0.25, 1)
+        trial.suggest_categorical('subsample', ['random', 'fourier'])
+        trial.suggest_categorical('method', ['wavelet', 'fourier'])
         trial.suggest_float('lam', 0, 1)
         trial.suggest_float('lam_decay', 0.9, 1)
-    
+
     def generate(self, originals):
         # undersample the signals
-        y = self.subsample(originals)
-        Yl, Yh = dwt(y, self.levels, self.wavelet)
+        y = self.subsampler(originals)
+        self.method.initialize(y)
 
         # reconstruct the signals
         x_hat = torch.zeros_like(y)
@@ -68,12 +96,7 @@ class RandomSubsampling(Reconstruction):
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
-            Zl = Yl - Xl
-            Zh = [yh - xh for yh, xh in zip(Yh, Xh)]
-
-            z = idwt((Zl, Zh), self.wavelet)
-            x_hat = hard_thresh(x_hat + z, lam)
+            x_hat = self.method.reconstruct(x_hat, lam)
             x_hat = torch.clamp(x_hat, 0, 1)
 
             lam *= self.lam_decay
@@ -82,36 +105,58 @@ class RandomSubsampling(Reconstruction):
 
         return x_hat
 
-class FourierSubsampling(Reconstruction):
-    def __init__(self, wavelet='db3', lam=0.4, lam_decay=0.995, **kwargs):
+class Method:
+    def __init__(self):
+        pass
+
+    def initialize(self, y):
+        pass
+
+    def reconstruct(self, x_hat, lam):
+        pass
+
+    @staticmethod
+    def initialize_trial(trial):
+        pass
+
+class WaveletMethod(Method):
+    def __init__(self, wavelet='db3', levels=3, **kwargs):
         super().__init__(**kwargs)
 
         self.wavelet = wavelet
-        self.lam = lam
-        self.lam_decay = lam_decay
+        self.levels = levels
     
     @staticmethod
     def initialize_trial(trial):
-        Reconstruction.initialize_trial(trial)
-        trial.suggest_float('lam', 0, 1)
-        trial.suggest_float('lam_decay', 0.9, 1)
+        trial.suggest_categorical('wavelet', pywt.wavelist())
+        trial.suggest_int('levels', 1, 10)
     
-    def generate(self, originals):
-        # undersample the signals
-        y = self.subsample(originals)
-        
-        # reconstruct the signals
-        x_hat = torch.zeros_like(y)
-        err = np.inf
-        lam = self.lam
-        while err > self.tol:
-            x_old = x_hat.cpu().detach().numpy()
+    def initialize(self, y):
+        self.Yh, self.Yl = dwt(y, self.levels, self.wavelet)
+    
+    def reconstruct(self, x_hat, lam):
+        Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
+        Zl = self.Yl - Xl
+        Zh = [yh - xh for yh, xh in zip(self.Yh, Xh)]
 
-            x_hat = hard_thresh(x_hat + torch.real(ifft2(y - fft2(x_hat))), lam)
-            x_hat = torch.clamp(x_hat, 0, 1)
+        z = idwt((Zl, Zh), self.wavelet)
+        x_hat = hard_thresh(x_hat + z, lam)
 
-            lam *= self.lam_decay
+        return x_hat
 
-            err = np.square(x_hat.cpu().detach().numpy() - x_old).mean()
+class FourierMethod(Method):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    @staticmethod
+    def initialize_trial(trial):
+        pass
+    
+    def initialize(self, y):
+        self.y = y
+    
+    def reconstruct(self, x_hat, lam):
+        x_hat = hard_thresh(x_hat + torch.real(ifft2(self.y - fft2(x_hat))), lam)
+        x_hat = torch.clamp(x_hat, 0, 1)
 
         return x_hat
