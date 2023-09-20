@@ -57,7 +57,7 @@ class RandomSubsampling(Reconstruction):
             x_old = x_hat.cpu().detach().numpy()
 
             Yl, Yh = dwt(x_hat, self.levels, self.wavelet)
-            Yl, Yh = hard_thresh(Yl, Yh, lam)
+            Yl, Yh = hard_thresh(Yl, lam), [hard_thresh(c, lam) for c in Yh]
             x_hat = idwt((Yl, Yh), self.wavelet)
 
             x_hat = y + x_hat * (1 - mask)
@@ -82,9 +82,7 @@ class FourierSubsampling(Reconstruction):
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', pywt.wavelist())
         trial.suggest_float('undersample_rate', 0.25, 1)
-        trial.suggest_int('levels', 1, 10)
         trial.suggest_float('lam', 0, 1)
         trial.suggest_float('lam_decay', 0.9, 1)
     
@@ -99,7 +97,8 @@ class FourierSubsampling(Reconstruction):
                     )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
         # undersample the signals
-        y = torch.real(ifft2(fft2(normalize(originals)) * mask))
+        y_hat = fft2(normalize(originals)) * mask
+        y = torch.real(ifft2(y_hat))
         
         # reconstruct the signals
         x_hat = torch.clone(y)
@@ -108,11 +107,10 @@ class FourierSubsampling(Reconstruction):
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            Yl, Yh = dwt(x_hat, self.levels, self.wavelet)
-            Yl, Yh = hard_thresh(Yl, Yh, lam)
-            x_hat = idwt((Yl, Yh), self.wavelet)
-
-            x_hat = y + x_hat * (1 - mask)
+            z = fft2(x_hat)
+            z = hard_thresh(z, lam)
+            z = y_hat + z * (1 - mask)
+            x_hat = torch.real(ifft2(z))
             x_hat = torch.clamp(x_hat, 0, 1)
 
             lam *= self.lam_decay
