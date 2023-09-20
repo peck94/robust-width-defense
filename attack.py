@@ -6,7 +6,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from utils import generate_reconstructions, normalize
+from utils import generate_reconstructions, normalize, Wrapper
 
 from tqdm import tqdm
 
@@ -21,8 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
-    parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
+    parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
 
     args = parser.parse_args()
 
@@ -46,18 +46,28 @@ if __name__ == '__main__':
     model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
-    adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version=args.version)
+    if args.adapt:
+        defense = Wrapper(model, **study.best_params).to(device)
+        adversary = AutoAttack(defense, norm='Linf', eps=args.eps/255, version='rand')
+    else:
+        adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version='standard')
+
     total = 0
     orig_acc = 0
     adv_rec_acc = 0
     progbar = tqdm(data_loader)
     for x_batch, y_batch in progbar:
         x_adv = adversary.run_standard_evaluation(x_batch.to(device), y_batch.to(device), bs=x_batch.shape[0])
-        x_rec = generate_reconstructions(normalize(x_adv), **study.best_params)
-        x_orig = generate_reconstructions(normalize(x_batch.to(device)), **study.best_params)
 
-        y_pred_orig = model(x_orig.float()).cpu().detach().numpy()
-        y_pred = model(x_rec.float()).cpu().detach().numpy()
+        if args.adapt:
+            y_pred_orig = defense(x_batch.to(device)).cpu().detach().numpy()
+            y_pred = defense(x_adv).cpu().detach().numpy()
+        else:
+            x_orig = generate_reconstructions(normalize(x_batch.to(device)), **study.best_params)
+            x_rec = generate_reconstructions(normalize(x_adv), **study.best_params)
+
+            y_pred_orig = model(x_orig.float()).cpu().detach().numpy()
+            y_pred = model(x_rec.float()).cpu().detach().numpy()
 
         orig_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
         adv_rec_acc += (y_pred.argmax(axis=1) == y_batch.numpy()).sum()

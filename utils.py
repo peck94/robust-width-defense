@@ -1,7 +1,17 @@
-import pywt
 import pytorch_wavelets
 import torch
 import numpy as np
+
+class Wrapper(torch.nn.Module):
+    def __init__(self, model, **params):
+        super().__init__()
+
+        self.model = model
+        self.params = params
+    
+    def forward(self, x):
+        x_hat = generate_reconstructions(normalize(x.float()), **self.params)
+        return self.model(x_hat.float())
 
 def dwt(x, levels, method='bior1.3'):
     xfm = pytorch_wavelets.DWT(J=levels, wave=method, mode='symmetric')
