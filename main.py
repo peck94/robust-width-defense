@@ -67,28 +67,34 @@ if __name__ == '__main__':
         print(f'Running trial with params: {trial.params}')
 
         adv_rec_acc = 0
+        orig_rec_acc = 0
         total = 0
         max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
         progbar = tqdm(data_loader, total=max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
+            x_orig = reconstructor.generate(x_batch)
             x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
             x_rec = reconstructor.generate(x_adv)
 
+            y_pred_orig = model(x_orig.float().to(device)).cpu().detach().numpy()
+            orig_rec_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
+
             y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
             adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
+
             total += x_batch.shape[0]
 
-            progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total})
+            progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total, 'orig_rec_acc': orig_rec_acc/total})
 
-            trial.report(adv_rec_acc/total, step)
+            trial.report(min(adv_rec_acc/total, orig_rec_acc/total), step)
             if trial.should_prune():
                 raise optuna.TrialPruned()
 
             if step >= max_batches - 1:
                 break
         
-        return adv_rec_acc/total
+        return min(adv_rec_acc/total, orig_rec_acc/total)
     
     # start the study
     study = optuna.create_study(study_name=args.name, storage=args.results, load_if_exists=True, direction='maximize')
