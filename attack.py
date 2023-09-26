@@ -42,12 +42,7 @@ if __name__ == '__main__':
     
     # load best parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
-    if args.method == 'random':
-        reconstructor = Reconstruction(**study.best_params)
-    elif args.method == 'fourier':
-        reconstructor = Reconstruction(**study.best_params)
-    else:
-        raise ValueError(f'Unsupported method: {args.method}')
+    reconstructor = Reconstruction(**study.best_params)
     print(f'Loaded study with parameters: {study.best_params}')
 
     # load model
