@@ -19,6 +19,9 @@ def normalize(x):
 def hard_thresh(x, lam):
     return torch.where(abs(x) < lam, torch.zeros_like(x), x)
 
+def soft_thresh(x, lam):
+    return torch.sign(x) * torch.maximum(torch.zeros_like(x), torch.abs(x) - lam)
+
 def dwt(x, levels, method='bior1.3'):
     xfm = DWT(J=levels, wave=method, mode='symmetric')
     return xfm(x.float())

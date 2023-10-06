@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.fft import fft2, ifft2
 
-from utils import dwt, idwt, hard_thresh, normalize
+from utils import dwt, idwt, soft_thresh, normalize
 
 class Subsampler:
     def __init__(self, undersample_rate, **kwargs):
@@ -94,7 +94,7 @@ class Reconstruction:
         while err > self.tol:
             x_old = x_hat.cpu().detach().numpy()
 
-            x_hat = hard_thresh(self.method.reconstruct(x_hat), lam)
+            x_hat = soft_thresh(self.method.reconstruct(x_hat), lam)
             x_hat = torch.clamp(x_hat, 0, 1)
 
             lam *= self.lam_decay
