@@ -87,15 +87,14 @@ if __name__ == '__main__':
 
             progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total, 'orig_rec_acc': orig_rec_acc/total})
 
-            trial.report(min(adv_rec_acc/total, orig_rec_acc/total), step)
-            if trial.should_prune():
+            if step >= 10 and (adv_rec_acc/total < .4 or orig_rec_acc/total < .6):
                 raise optuna.TrialPruned()
 
             if step >= max_batches - 1:
                 break
         
-        return min(adv_rec_acc/total, orig_rec_acc/total)
+        return adv_rec_acc/total, orig_rec_acc/total
     
     # start the study
-    study = optuna.create_study(study_name=args.name, storage=args.results, load_if_exists=True, direction='maximize')
+    study = optuna.create_study(study_name=args.name, storage=args.results, load_if_exists=True, directions=['maximize', 'maximize'])
     study.optimize(objective, n_trials=args.trials)
