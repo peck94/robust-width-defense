@@ -3,9 +3,7 @@ import numpy as np
 import torch
 from torch.fft import fft2, ifft2
 
-import pywt
-
-from utils import dwt, idwt, hard_thresh, normalize, test_wavelet
+from utils import dwt, idwt, hard_thresh, normalize
 
 class Subsampler:
     def __init__(self, undersample_rate, **kwargs):
@@ -128,7 +126,7 @@ class WaveletMethod(Method):
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', [w for w in pywt.wavelist() if test_wavelet(w)])
+        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16'])
         trial.suggest_int('levels', 1, 10)
     
     def initialize(self, y):
