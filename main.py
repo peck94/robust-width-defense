@@ -89,8 +89,6 @@ if __name__ == '__main__':
 
             if adv_rec_acc/total < .1 or orig_rec_acc/total < .1:
                 raise optuna.TrialPruned()
-            if step >= 5 and (adv_rec_acc/total < .4 or orig_rec_acc/total < .6):
-                raise optuna.TrialPruned()
 
             if step >= max_batches - 1:
                 break
