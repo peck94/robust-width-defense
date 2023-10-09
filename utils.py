@@ -1,7 +1,5 @@
 import torch
 
-from pytorch_wavelets import DWT, IDWT, DTCWT, IDTCWT
-
 class Wrapper(torch.nn.Module):
     def __init__(self, model, reconstructor):
         super().__init__()
@@ -33,17 +31,3 @@ def soft_thresh(xs, lam):
         return torch.zeros_like(xs) + (abs(xs) - lam) / abs(xs) * xs * (abs(xs) > lam)
     else:
         return torch.zeros_like(xs) + (xs + lam) * (xs < -lam) + (xs - lam) * (xs > lam)
-
-def dwt(x, levels, method='db2'):
-    if method == 'dtcwt':
-        xfm = DTCWT(J=levels)
-    else:
-        xfm = DWT(J=levels, wave=method)
-    return xfm(x.float())
-
-def idwt(coeffs, method='db2'):
-    if method == 'dtcwt':
-        ifm = IDTCWT()
-    else:
-        ifm = IDWT(wave=method)
-    return ifm(coeffs)

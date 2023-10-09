@@ -3,7 +3,9 @@ import numpy as np
 import torch
 from torch.fft import fft2, ifft2
 
-from utils import dwt, idwt, hard_thresh, normalize
+from utils import hard_thresh, normalize
+
+from pytorch_wavelets import DWT, IDWT, DTCWT, IDTCWT
 
 class Subsampler:
     def __init__(self, undersample_rate, **kwargs):
@@ -95,6 +97,8 @@ class Reconstruction:
             return FourierMethod
         elif method == 'wavelet':
             return WaveletMethod
+        elif method == 'dtcwt':
+            return DualTreeMethod
         elif method == 'dummy':
             return DummyMethod
         else:
@@ -104,7 +108,7 @@ class Reconstruction:
     def initialize_trial(trial):
         trial.suggest_float('undersample_rate', 0.25, 1)
         trial.suggest_categorical('subsample', ['random', 'fourier'])
-        trial.suggest_categorical('method', ['wavelet', 'fourier'])
+        trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt'])
         trial.suggest_float('lam', 0, 1)
         trial.suggest_float('lam_decay', 0.9, 1)
 
@@ -151,18 +155,40 @@ class WaveletMethod(Method):
 
         self.wavelet = wavelet
         self.levels = levels
+
+        self.xfm = DWT(J=self.levels, wave=self.wavelet)
+        self.ifm = IDWT(wave=self.wavelet)
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16', 'dtcwt'])
+        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16'])
         trial.suggest_int('levels', 1, 10)
     
     def forward(self, x_hat):
-        Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
+        Xl, Xh = self.xfm(x_hat.float())
         return Xl, Xh
     
     def backward(self, z):
-        return idwt(z, self.wavelet)
+        return self.ifm(z)
+
+class DualTreeMethod(Method):
+    def __init__(self,  levels=3, **kwargs):
+        super().__init__(**kwargs)
+
+        self.levels = levels
+        self.xfm = DTCWT(J=self.levels)
+        self.ifm = IDTCWT()
+    
+    @staticmethod
+    def initialize_trial(trial):
+        trial.suggest_int('levels', 1, 10)
+    
+    def forward(self, x_hat):
+        Xl, Xh = self.xfm(x_hat.float())
+        return Xl, Xh
+    
+    def backward(self, z):
+        return self.ifm(z)
 
 class FourierMethod(Method):
     def __init__(self, **kwargs):
