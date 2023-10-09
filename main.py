@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
+    parser.add_argument('-max-batches', type=int, default=100, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
 
     args = parser.parse_args()
@@ -69,9 +70,8 @@ if __name__ == '__main__':
         adv_rec_acc = 0
         orig_rec_acc = 0
         total = 0
-        max_batches = 100
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
-        progbar = tqdm(data_loader, total=max_batches)
+        progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
             x_orig = reconstructor.generate(x_batch)
             x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             if adv_rec_acc/total < .1 or orig_rec_acc/total < .1:
                 raise optuna.TrialPruned()
 
-            if step >= max_batches - 1:
+            if step >= args.max_batches - 1:
                 break
         
         return adv_rec_acc/total, orig_rec_acc/total

@@ -154,7 +154,7 @@ class WaveletMethod(Method):
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16'])
+        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16', 'dtcwt'])
         trial.suggest_int('levels', 1, 10)
     
     def forward(self, x_hat):
