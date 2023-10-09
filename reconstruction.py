@@ -3,12 +3,19 @@ import numpy as np
 import torch
 from torch.fft import fft2, ifft2
 
-from utils import dwt, idwt, soft_thresh, normalize
+from utils import dwt, idwt, hard_thresh, normalize
 
 class Subsampler:
     def __init__(self, undersample_rate, **kwargs):
         self.undersample_rate = undersample_rate
 
+    def __call__(self, originals):
+        return originals
+
+class DummySubsampler(Subsampler):
+    def __init__(self, undersample_rate, **kwargs):
+        super().__init__(undersample_rate, **kwargs)
+    
     def __call__(self, originals):
         return originals
 
@@ -27,7 +34,7 @@ class RandomSubsampler(Subsampler):
                     )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
         # undersample the signals
-        return normalize(originals) * mask
+        return originals * mask
 
 class FourierSubsampler(Subsampler):
     def __init__(self, undersample_rate, **kwargs):
@@ -44,7 +51,7 @@ class FourierSubsampler(Subsampler):
                     )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
 
         # undersample the signals
-        return torch.real(fft2(normalize(originals)) * mask)
+        return torch.real(ifft2(fft2(originals) * mask))
 
 class Reconstruction:
     def __init__(self, undersample_rate=0.5, subsample='fourier', method='fourier', lam=0.9, lam_decay=0.995, tol=1e-4, **kwargs):
@@ -62,6 +69,8 @@ class Reconstruction:
             return FourierSubsampler
         elif subsample == 'random':
             return RandomSubsampler
+        elif subsample == 'dummy':
+            return DummySubsampler
         else:
             raise ValueError(f'Unsupported subsampler: {subsample}')
 
@@ -71,6 +80,8 @@ class Reconstruction:
             return FourierMethod
         elif method == 'wavelet':
             return WaveletMethod
+        elif method == 'dummy':
+            return DummyMethod
         else:
             raise ValueError(f'Unsupported method: {method}')
     
@@ -84,24 +95,23 @@ class Reconstruction:
 
     def generate(self, originals):
         # undersample the signals
-        y = self.subsampler(originals)
+        y = self.subsampler(normalize(originals))
         self.method.initialize(y)
 
         # reconstruct the signals
-        x_hat = torch.zeros_like(y)
         err = np.inf
         lam = self.lam
         while err > self.tol:
-            x_old = x_hat.cpu().detach().numpy()
+            x_old = y.cpu().detach().numpy()
 
-            x_hat = soft_thresh(self.method.reconstruct(x_hat), lam)
-            x_hat = torch.clamp(x_hat, 0, 1)
+            y = self.method.reconstruct(y, lam)
+            y = torch.clamp(y, 0, 1)
 
             lam *= self.lam_decay
 
-            err = np.square(x_hat.cpu().detach().numpy() - x_old).mean()
+            err = np.square(y.cpu().detach().numpy() - x_old).mean()
 
-        return x_hat
+        return y
 
 class Method:
     def __init__(self):
@@ -132,14 +142,12 @@ class WaveletMethod(Method):
     def initialize(self, y):
         self.Yl, self.Yh = dwt(y, self.levels, self.wavelet)
     
-    def reconstruct(self, x_hat):
+    def reconstruct(self, x_hat, lam):
         Xl, Xh = dwt(x_hat, self.levels, self.wavelet)
-        Zl = self.Yl - Xl
-        Zh = [yh - xh for yh, xh in zip(self.Yh, Xh)]
+        Xl = hard_thresh(Xl, lam)
+        Xh = [hard_thresh(xh, lam) for xh in Xh]
 
-        z = idwt((Zl, Zh), self.wavelet)
-
-        return x_hat + z
+        return idwt((Xl, Xh), self.wavelet)
 
 class FourierMethod(Method):
     def __init__(self, **kwargs):
@@ -152,7 +160,20 @@ class FourierMethod(Method):
     def initialize(self, y):
         self.y = y
     
-    def reconstruct(self, x_hat):
-        x_hat = x_hat + torch.real(ifft2(self.y - fft2(x_hat)))
+    def reconstruct(self, x_hat, lam):
+        z = hard_thresh(fft2(x_hat), lam)
+        return torch.real(ifft2(z))
 
+class DummyMethod(Method):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    @staticmethod
+    def initialize_trial(trial):
+        pass
+    
+    def initialize(self, y):
+        pass
+    
+    def reconstruct(self, x_hat, lam):
         return x_hat

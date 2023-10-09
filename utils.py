@@ -22,10 +22,10 @@ def hard_thresh(x, lam):
 def soft_thresh(x, lam):
     return torch.sign(x) * torch.maximum(torch.zeros_like(x), torch.abs(x) - lam)
 
-def dwt(x, levels, method='bior1.3'):
-    xfm = DWT(J=levels, wave=method, mode='symmetric')
+def dwt(x, levels, method='db2'):
+    xfm = DWT(J=levels, wave=method, mode='per')
     return xfm(x.float())
 
-def idwt(coeffs, method='bior1.3'):
-    ifm = IDWT(mode='symmetric', wave=method)
+def idwt(coeffs, method='db2'):
+    ifm = IDWT(mode='per', wave=method)
     return ifm(coeffs)
