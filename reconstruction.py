@@ -1,77 +1,30 @@
 import numpy as np
 
 import torch
-from torch.fft import fft2, ifft2
 
 from utils import hard_thresh, normalize
 
-from pytorch_wavelets import DWT, IDWT, DTCWT, IDTCWT
+from subsamplers import FourierSubsampler, RandomSubsampler, DummySubsampler
 
-class Subsampler:
-    def __init__(self, undersample_rate, **kwargs):
-        self.undersample_rate = undersample_rate
-
-    def __call__(self, originals):
-        return originals
-    
-    def restore(self, y, x_hat):
-        return x_hat
-
-class DummySubsampler(Subsampler):
-    def __init__(self, undersample_rate, **kwargs):
-        super().__init__(undersample_rate, **kwargs)
-    
-    def __call__(self, originals):
-        return originals
-    
-    def restore(self, y, x_hat):
-        return x_hat
-
-class RandomSubsampler(Subsampler):
-    def __init__(self, undersample_rate, **kwargs):
-        super().__init__(undersample_rate, **kwargs)
-    
-    def __call__(self, originals):
-        # create mask
-        n = np.prod(originals.shape[2:])
-        m = int(n * self.undersample_rate)
-        self.mask = torch.from_numpy(np.random.permutation(
-                    np.concatenate(
-                        (np.ones(m),
-                        np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
-
-        # undersample the signals
-        return originals * self.mask
-    
-    def restore(self, y, x_hat):
-        return torch.where(self.mask > 0, y, x_hat)
-
-class FourierSubsampler(Subsampler):
-    def __init__(self, undersample_rate, **kwargs):
-        super().__init__(undersample_rate, **kwargs)
-    
-    def __call__(self, originals):
-        # create mask
-        n = np.prod(originals.shape[2:])
-        m = int(n * self.undersample_rate)
-        self.mask = torch.from_numpy(np.random.permutation(
-                    np.concatenate(
-                        (np.ones(m),
-                        np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
-
-        # undersample the signals
-        return torch.real(ifft2(fft2(originals) * self.mask))
-    
-    def restore(self, y, x_hat):
-        u = fft2(y)
-        v = fft2(x_hat)
-        z = torch.where(self.mask > 0, u, v)
-        return torch.real(ifft2(z))
+from methods import FourierMethod, WaveletMethod, DualTreeMethod, DummyMethod
 
 class Reconstruction:
+    """
+    This class instantiates the reconstruction algorithm. It works in two steps:
+    1. Subsample the original inputs using one of the subsampling methods.
+    2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
+    """
+
     def __init__(self, undersample_rate=0.5, subsample='fourier', method='fourier', lam=0.9, lam_decay=0.995, tol=1e-4, **kwargs):
+        """
+        :param undersample_rate: The undersampling rate for the subsampling method.
+        :param subsample: Name of the subsampling method. See `get_subsampler` for supported names.
+        :param method: Name of the reconstruction method. See `get_method` for supported names.
+        :param lam: Parameter for thresholding.
+        :param lam_decay: Decay of the lam parameter.
+        :param tol: Error tolerance.
+        """
+
         self.undersample_rate = undersample_rate
         self.tol = tol
         self.lam = lam
@@ -82,6 +35,9 @@ class Reconstruction:
     
     @staticmethod
     def get_subsampler(subsample):
+        """
+        Returns a subsampling method based on its name.
+        """
         if subsample == 'fourier':
             return FourierSubsampler
         elif subsample == 'random':
@@ -93,6 +49,9 @@ class Reconstruction:
 
     @staticmethod
     def get_method(method):
+        """
+        Returns a reconstruction method based on its name.
+        """
         if method == 'fourier':
             return FourierMethod
         elif method == 'wavelet':
@@ -106,6 +65,9 @@ class Reconstruction:
     
     @staticmethod
     def initialize_trial(trial):
+        """
+        Initialize the Optuna trial.
+        """
         trial.suggest_float('undersample_rate', 0.25, 1)
         trial.suggest_categorical('subsample', ['random', 'fourier'])
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt'])
@@ -113,107 +75,40 @@ class Reconstruction:
         trial.suggest_float('lam_decay', 0.9, 1)
 
     def generate(self, originals):
+        """
+        Generate the reconstructed images.
+
+        :param originals: Array of original inputs.
+        :return: Array of reconstructed images.
+        """
+
         # undersample the signals
         y = self.subsampler(normalize(originals))
 
         # reconstruct the signals
         err = np.inf
         lam = self.lam
-        x_hat = torch.from_numpy(y.cpu().detach().numpy())
+        x_hat = torch.from_numpy(y.cpu().detach().numpy()).to(originals.device)
         while err > self.tol:
+            # copy the images to compute the error
             x_old = x_hat.cpu().detach().numpy()
 
+            # compute sparse representations
             z = self.method.forward(x_hat)
+            # threshold the coefficients
             z = hard_thresh(z, lam)
+            # reconstruct the images
             x_hat = self.method.backward(z)
+            # perform the inpainting
             x_hat = self.subsampler.restore(y, x_hat)
 
+            # clamp to [0,1]
             x_hat = torch.clamp(x_hat, 0, 1)
+
+            # decay lam
             lam *= self.lam_decay
 
+            # compute the error
             err = np.square(x_hat.cpu().detach().numpy() - x_old).mean() / np.square(x_old).mean()
 
         return x_hat
-
-class Method:
-    def __init__(self):
-        pass
-
-    def forward(self, x_hat):
-        pass
-
-    def backward(self, z):
-        pass
-
-    @staticmethod
-    def initialize_trial(trial):
-        pass
-
-class WaveletMethod(Method):
-    def __init__(self, wavelet='db3', levels=3, **kwargs):
-        super().__init__(**kwargs)
-
-        self.wavelet = wavelet
-        self.levels = levels
-
-        self.xfm = DWT(J=self.levels, wave=self.wavelet)
-        self.ifm = IDWT(wave=self.wavelet)
-    
-    @staticmethod
-    def initialize_trial(trial):
-        trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16'])
-        trial.suggest_int('levels', 1, 10)
-    
-    def forward(self, x_hat):
-        Xl, Xh = self.xfm(x_hat.float())
-        return Xl, Xh
-    
-    def backward(self, z):
-        return self.ifm(z)
-
-class DualTreeMethod(Method):
-    def __init__(self,  levels=3, **kwargs):
-        super().__init__(**kwargs)
-
-        self.levels = levels
-        self.xfm = DTCWT(J=self.levels)
-        self.ifm = IDTCWT()
-    
-    @staticmethod
-    def initialize_trial(trial):
-        trial.suggest_int('levels', 1, 10)
-    
-    def forward(self, x_hat):
-        Xl, Xh = self.xfm(x_hat.float())
-        return Xl, Xh
-    
-    def backward(self, z):
-        return self.ifm(z)
-
-class FourierMethod(Method):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-    
-    @staticmethod
-    def initialize_trial(trial):
-        pass
-    
-    def forward(self, x_hat):
-        return fft2(x_hat)
-    
-    def backward(self, z):
-        return torch.real(ifft2(z))
-
-class DummyMethod(Method):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-    
-    @staticmethod
-    def initialize_trial(trial):
-        pass
-    
-    def forward(self, x_hat):
-        return x_hat
-    
-    def backward(self, z):
-        return z
