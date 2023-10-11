@@ -6,7 +6,7 @@ from utils import hard_thresh, normalize
 
 from subsamplers import FourierSubsampler, RandomSubsampler, DummySubsampler
 
-from methods import FourierMethod, WaveletMethod, DualTreeMethod, DummyMethod
+from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod, DummyMethod
 
 class Reconstruction:
     """
@@ -32,6 +32,7 @@ class Reconstruction:
         
         self.subsampler = Reconstruction.get_subsampler(subsample)(undersample_rate, **kwargs)
         self.method = Reconstruction.get_method(method)(**kwargs)
+        self.built = False
     
     @staticmethod
     def get_subsampler(subsample):
@@ -60,6 +61,8 @@ class Reconstruction:
             return DualTreeMethod
         elif method == 'dummy':
             return DummyMethod
+        elif method == 'shearlet':
+            return ShearletMethod
         else:
             raise ValueError(f'Unsupported method: {method}')
     
@@ -81,6 +84,10 @@ class Reconstruction:
         :param originals: Array of original inputs.
         :return: Array of reconstructed images.
         """
+
+        if not self.built:
+            self.method.build(originals)
+            self.built = True
 
         # undersample the signals
         y = self.subsampler(normalize(originals))

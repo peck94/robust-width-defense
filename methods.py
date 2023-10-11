@@ -3,12 +3,22 @@ from torch.fft import fft2, ifft2
 
 from pytorch_wavelets import DWT, IDWT, DTCWT, IDTCWT
 
+from pytorch_shearlets.shearlets import ShearletSystem
+
 class Method:
     """
     Defines a reconstruction method for solving the compressed sensing problem.
     """
 
     def __init__(self):
+        pass
+
+    def build(self, x):
+        """
+        Prepares the method for a given input.
+
+        :param x: Input
+        """
         pass
 
     def forward(self, x_hat):
@@ -53,6 +63,30 @@ class DummyMethod(Method):
     
     def backward(self, z):
         return z
+
+class ShearletMethod(Method):
+    """
+    This method uses shearlets to compute the sparse representations.
+    """
+
+    def __init__(self, scales=2, **kwargs):
+        super().__init__(**kwargs)
+
+        self.system = None
+        self.scales = scales
+    
+    @staticmethod
+    def initialize_trial(trial):
+        trial.suggest_int('scales', 1, 3)
+    
+    def build(self, x):
+        self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, device=x.device)
+    
+    def forward(self, x_hat):
+        return self.system.decompose(x_hat)
+    
+    def backward(self, z):
+        return self.system.reconstruct(z)
 
 class WaveletMethod(Method):
     """
