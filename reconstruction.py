@@ -71,11 +71,11 @@ class Reconstruction:
         """
         Initialize the Optuna trial.
         """
-        trial.suggest_float('undersample_rate', 0.25, 1)
+        trial.suggest_float('undersample_rate', 0.5, 1)
         trial.suggest_categorical('subsample', ['random', 'fourier', 'dummy'])
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
-        trial.suggest_float('lam', 1e-4, 1e4, log=True)
-        trial.suggest_float('lam_decay', 0.5, 1)
+        trial.suggest_float('lam', .01, 1e4, log=True)
+        trial.suggest_float('lam_decay', 0.9, 1)
 
     def generate(self, originals):
         """

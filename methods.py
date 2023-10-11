@@ -12,8 +12,8 @@ class Method:
     Defines a reconstruction method for solving the compressed sensing problem.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, device):
+        self.device = device
 
     def build(self, x):
         """
@@ -82,7 +82,7 @@ class ShearletMethod(Method):
         trial.suggest_int('scales', 1, 3)
     
     def build(self, x):
-        self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', x.device)
+        self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', self.device)
     
     def forward(self, x_hat):
         return self.system.decompose(x_hat)
@@ -105,8 +105,8 @@ class WaveletMethod(Method):
         self.wavelet = wavelet
         self.levels = levels
 
-        self.xfm = SWTForward(J=self.levels, wave=self.wavelet)
-        self.ifm = SWTInverse(wave=self.wavelet)
+        self.xfm = SWTForward(J=self.levels, wave=self.wavelet).to(self.device)
+        self.ifm = SWTInverse(wave=self.wavelet).to(self.device)
     
     @staticmethod
     def initialize_trial(trial):
@@ -131,12 +131,12 @@ class DualTreeMethod(Method):
         super().__init__(**kwargs)
 
         self.levels = levels
-        self.xfm = DTCWT(J=self.levels)
-        self.ifm = IDTCWT()
+        self.xfm = DTCWT(J=self.levels).to(self.device)
+        self.ifm = IDTCWT().to(self.device)
     
     @staticmethod
     def initialize_trial(trial):
-        trial.suggest_int('levels', 1, 10)
+        trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
         Xl, Xh = self.xfm(x_hat.float())

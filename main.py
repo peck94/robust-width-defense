@@ -64,7 +64,7 @@ if __name__ == '__main__':
         method = Reconstruction.get_method(trial.params['method'])
         method.initialize_trial(trial)
 
-        reconstructor = Reconstruction(**trial.params)
+        reconstructor = Reconstruction(**trial.params, device=device)
 
         print(f'Running trial with params: {trial.params}')
 
@@ -74,14 +74,14 @@ if __name__ == '__main__':
         attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf, max_iter=args.iterations)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
-            x_orig = reconstructor.generate(x_batch)
-            x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy()))
-            x_rec = reconstructor.generate(x_adv)
+            x_orig = reconstructor.generate(x_batch.float().to(device)).float()
+            x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy())).float().to(device)
+            x_rec = reconstructor.generate(x_adv).float()
 
-            y_pred_orig = model(x_orig.float().to(device)).cpu().detach().numpy()
+            y_pred_orig = model(x_orig).cpu().detach().numpy()
             orig_rec_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
 
-            y_pred_rec = model(x_rec.float().to(device)).cpu().detach().numpy()
+            y_pred_rec = model(x_rec).cpu().detach().numpy()
             adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
 
             total += x_batch.shape[0]

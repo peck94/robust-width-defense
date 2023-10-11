@@ -10,8 +10,9 @@ class Subsampler:
     :param undersample_rate: The undersampling rate. A value between 0 and 1 where 0 removes all information and 1 performs no subsampling.
     """
 
-    def __init__(self, undersample_rate, **kwargs):
+    def __init__(self, undersample_rate, device, **kwargs):
         self.undersample_rate = undersample_rate
+        self.device = device
 
     def __call__(self, originals):
         """
@@ -63,7 +64,7 @@ class RandomSubsampler(Subsampler):
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
+                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
 
         # undersample the signals
         return originals * self.mask
@@ -90,7 +91,7 @@ class FourierSubsampler(Subsampler):
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(originals.device)
+                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
 
         # undersample the signals
         return torch.real(ifft2(fft2(originals) * self.mask))
