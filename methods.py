@@ -109,7 +109,7 @@ class WaveletMethod(Method):
     @staticmethod
     def initialize_trial(trial):
         trial.suggest_categorical('wavelet', ['sym2', 'sym8', 'sym16', 'dmey', 'db2', 'db8', 'db16'])
-        trial.suggest_int('levels', 1, 10)
+        trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
         Xl, Xh = self.xfm(x_hat.float())
