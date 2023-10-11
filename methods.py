@@ -80,7 +80,7 @@ class ShearletMethod(Method):
         trial.suggest_int('scales', 1, 3)
     
     def build(self, x):
-        self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, device=x.device)
+        self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', x.device)
     
     def forward(self, x_hat):
         return self.system.decompose(x_hat)
