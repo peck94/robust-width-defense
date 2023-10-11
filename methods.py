@@ -1,7 +1,9 @@
 import torch
 from torch.fft import fft2, ifft2
 
-from pytorch_wavelets import DWT, IDWT, DTCWT, IDTCWT
+from pytorch_wavelets import DTCWT, IDTCWT
+
+from swt import SWTForward, SWTInverse
 
 from pytorch_shearlets.shearlets import ShearletSystem
 
@@ -103,8 +105,8 @@ class WaveletMethod(Method):
         self.wavelet = wavelet
         self.levels = levels
 
-        self.xfm = DWT(J=self.levels, wave=self.wavelet)
-        self.ifm = IDWT(wave=self.wavelet)
+        self.xfm = SWTForward(J=self.levels, wave=self.wavelet)
+        self.ifm = SWTInverse(wave=self.wavelet)
     
     @staticmethod
     def initialize_trial(trial):
@@ -112,8 +114,7 @@ class WaveletMethod(Method):
         trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
-        Xl, Xh = self.xfm(x_hat.float())
-        return Xl, Xh
+        return self.xfm(x_hat.float())
     
     def backward(self, z):
         return self.ifm(z)

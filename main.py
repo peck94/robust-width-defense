@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-max-batches', type=int, default=100, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-iterations', type=int, default=100, help='AutoPGD iterations')
 
     args = parser.parse_args()
 
@@ -70,7 +71,7 @@ if __name__ == '__main__':
         adv_rec_acc = 0
         orig_rec_acc = 0
         total = 0
-        attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf)
+        attack = AutoProjectedGradientDescent(estimator=classifier, eps=args.eps/255, norm=np.inf, max_iter=args.iterations)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
             x_orig = reconstructor.generate(x_batch)
