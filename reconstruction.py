@@ -2,7 +2,7 @@ import numpy as np
 
 import torch
 
-from utils import hard_thresh, normalize
+from utils import soft_thresh, hard_thresh, normalize
 
 from subsamplers import FourierSubsampler, RandomSubsampler, DummySubsampler
 
@@ -72,10 +72,10 @@ class Reconstruction:
         Initialize the Optuna trial.
         """
         trial.suggest_float('undersample_rate', 0.25, 1)
-        trial.suggest_categorical('subsample', ['random', 'fourier'])
-        trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt'])
-        trial.suggest_float('lam', 0, 1)
-        trial.suggest_float('lam_decay', 0.9, 1)
+        trial.suggest_categorical('subsample', ['random', 'fourier', 'dummy'])
+        trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'dummy'])
+        trial.suggest_float('lam', 0, 1e4)
+        trial.suggest_float('lam_decay', 0.5, 1)
 
     def generate(self, originals):
         """
@@ -103,7 +103,7 @@ class Reconstruction:
             # compute sparse representations
             z = self.method.forward(x_hat)
             # threshold the coefficients
-            z = hard_thresh(z, lam)
+            z = soft_thresh(z, lam)
             # reconstruct the images
             x_hat = self.method.backward(z)
             # perform the inpainting

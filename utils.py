@@ -27,7 +27,5 @@ def soft_thresh(xs, lam):
         return (soft_thresh(x, lam) for x in xs)
     elif isinstance(xs, list):
         return [soft_thresh(x, lam) for x in xs]
-    elif torch.is_complex(xs):
-        return torch.zeros_like(xs) + (abs(xs) - lam) / abs(xs) * xs * (abs(xs) > lam)
     else:
-        return torch.zeros_like(xs) + (xs + lam) * (xs < -lam) + (xs - lam) * (xs > lam)
+        return torch.zeros_like(xs) + (abs(xs) - lam) / abs(xs) * xs * (abs(xs) > lam)
