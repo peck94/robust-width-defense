@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-name', type=str, default='cs-test', help='study name')
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
-    parser.add_argument('-trials', type=int, default=100, help='number of trials')
+    parser.add_argument('-trials', type=int, default=1000, help='number of trials')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
