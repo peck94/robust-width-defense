@@ -15,38 +15,20 @@ class Reconstruction:
     2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
     """
 
-    def __init__(self, undersample_rate=0.5, subsample='fourier', method='fourier', lam=0.9, lam_decay=0.995, tol=1e-4, **kwargs):
+    def __init__(self, method='fourier', lam=0.9, sigma=0.1, tol=1e-4, **kwargs):
         """
-        :param undersample_rate: The undersampling rate for the subsampling method.
-        :param subsample: Name of the subsampling method. See `get_subsampler` for supported names.
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         :param lam: Parameter for thresholding.
-        :param lam_decay: Decay of the lam parameter.
+        :param sigma: Standard deviation of the noise.
         :param tol: Error tolerance.
         """
 
-        self.undersample_rate = undersample_rate
         self.tol = tol
         self.lam = lam
-        self.lam_decay = lam_decay
+        self.sigma = sigma
         
-        self.subsampler = Reconstruction.get_subsampler(subsample)(undersample_rate, **kwargs)
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
-    
-    @staticmethod
-    def get_subsampler(subsample):
-        """
-        Returns a subsampling method based on its name.
-        """
-        if subsample == 'fourier':
-            return FourierSubsampler
-        elif subsample == 'random':
-            return RandomSubsampler
-        elif subsample == 'dummy':
-            return DummySubsampler
-        else:
-            raise ValueError(f'Unsupported subsampler: {subsample}')
 
     @staticmethod
     def get_method(method):
@@ -71,11 +53,9 @@ class Reconstruction:
         """
         Initialize the Optuna trial.
         """
-        trial.suggest_float('undersample_rate', 0.5, 1)
-        trial.suggest_categorical('subsample', ['random', 'fourier', 'dummy'])
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('lam', .01, 1e4, log=True)
-        trial.suggest_float('lam_decay', 0.9, 1)
+        trial.suggest_float('sigma', 0.001, 1, log=True)
 
     def generate(self, originals):
         """
@@ -85,37 +65,24 @@ class Reconstruction:
         :return: Array of reconstructed images.
         """
 
+        # build the method if necessary
         if not self.built:
             self.method.build(originals)
             self.built = True
 
-        # undersample the signals
-        y = self.subsampler(normalize(originals))
+        # compute noise
+        noise = self.sigma * torch.randn(originals.shape).to(originals.device)
 
-        # reconstruct the signals
-        err = np.inf
-        lam = self.lam
-        x_hat = torch.from_numpy(y.cpu().detach().numpy()).to(originals.device)
-        while err > self.tol:
-            # copy the images to compute the error
-            x_old = x_hat.cpu().detach().numpy()
+        # compute sparse representations
+        z = self.method.forward(normalize(originals) + noise)
 
-            # compute sparse representations
-            z = self.method.forward(x_hat)
-            # threshold the coefficients
-            z = soft_thresh(z, lam)
-            # reconstruct the images
-            x_hat = self.method.backward(z)
-            # perform the inpainting
-            x_hat = self.subsampler.restore(y, x_hat)
+        # threshold the coefficients
+        z = hard_thresh(z, self.lam)
 
-            # clamp to [0,1]
-            x_hat = torch.clamp(x_hat, 0, 1)
+        # reconstruct the images
+        x_hat = self.method.backward(z)
 
-            # decay lam
-            lam *= self.lam_decay
-
-            # compute the error
-            err = np.square(x_hat.cpu().detach().numpy() - x_old).mean() / np.square(x_old).mean()
+        # clamp to [0,1]
+        x_hat = torch.clamp(x_hat, 0, 1)
 
         return x_hat

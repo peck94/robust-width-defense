@@ -28,9 +28,9 @@ if __name__ == '__main__':
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
-    parser.add_argument('-max-batches', type=int, default=100, help='maximum number of batches')
+    parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
-    parser.add_argument('-iterations', type=int, default=100, help='AutoPGD iterations')
+    parser.add_argument('-iterations', type=int, default=10, help='AutoPGD iterations')
 
     args = parser.parse_args()
 
@@ -77,6 +77,9 @@ if __name__ == '__main__':
             x_orig = reconstructor.generate(x_batch.float().to(device)).float()
             x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy())).float().to(device)
             x_rec = reconstructor.generate(x_adv).float()
+
+            if x_orig.shape[1] < 3:
+                raise optuna.TrialPruned()
 
             y_pred_orig = model(x_orig).cpu().detach().numpy()
             orig_rec_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
