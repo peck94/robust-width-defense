@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
+    parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
 
     args = parser.parse_args()
 
@@ -40,10 +41,11 @@ if __name__ == '__main__':
                                                   transforms.ToTensor()]))
     data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
     
-    # load best parameters
+    # load parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
-    reconstructor = Reconstruction(**study.best_params)
-    print(f'Loaded study with parameters: {study.best_params}')
+    trial = study.trials[args.trial]
+    reconstructor = Reconstruction(**trial.params, device=device)
+    print(f'Loaded study with parameters: {trial.params}')
 
     # load model
     model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)

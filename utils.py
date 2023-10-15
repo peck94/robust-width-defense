@@ -8,7 +8,7 @@ class Wrapper(torch.nn.Module):
         self.reconstructor = reconstructor
     
     def forward(self, x):
-        x_hat = self.reconstructor.generate(normalize(x.float()))
+        x_hat = self.reconstructor.generate(x.float())
         return self.model(x_hat.float())
 
 def normalize(x):
