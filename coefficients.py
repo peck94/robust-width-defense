@@ -4,6 +4,12 @@ class Coefficients:
     def __init__(self):
         pass
 
+    def ht(self, x, lam):
+        return torch.where(abs(x) < lam, torch.zeros_like(x), x)
+    
+    def st(self, x, lam):
+        return torch.zeros_like(x) + (abs(x) - lam) / abs(x) * x * (abs(x) > lam)
+
     def hard_thresh(self, lam):
         pass
 
@@ -36,10 +42,10 @@ class WaveletCoefficients(Coefficients):
         self.high = high
     
     def hard_thresh(self, lam):
-        self.high = [torch.where(abs(x) < lam, torch.zeros_like(x), x) for x in self.high]
+        self.high = [self.ht(x, lam) for x in self.high]
     
     def soft_thresh(self, lam):
-        self.high = torch.zeros_like(self.high) + (abs(self.high) - lam) / abs(self.high) * self.high * (abs(self.high) > lam)
+        self.high = self.st(self.high, lam)
     
     def get(self):
         return self.low, self.high
@@ -51,10 +57,10 @@ class FourierCoefficients(Coefficients):
         self.coeffs = coeffs
 
     def hard_thresh(self, lam):
-        self.coeffs = torch.where(abs(self.coeffs) < lam, torch.zeros_like(self.coeffs), self.coeffs)
+        self.coeffs = self.ht(self.coeffs, lam)
     
     def soft_thresh(self, lam):
-        self.coeffs = torch.zeros_like(self.coeffs) + (abs(self.coeffs) - lam) / abs(self.coeffs) * self.coeffs * (abs(self.coeffs) > lam)
+        self.coeffs = self.st(self.coeffs, lam)
     
     def get(self):
         return self.coeffs
@@ -66,10 +72,10 @@ class ShearletCoefficients(Coefficients):
         self.coeffs = coeffs
 
     def hard_thresh(self, lam):
-        self.coeffs = torch.where(abs(self.coeffs) < lam, torch.zeros_like(self.coeffs), self.coeffs)
+        self.coeffs = self.ht(self.coeffs, lam)
     
     def soft_thresh(self, lam):
-        self.coeffs = torch.zeros_like(self.coeffs) + (abs(self.coeffs) - lam) / abs(self.coeffs) * self.coeffs * (abs(self.coeffs) > lam)
+        self.coeffs = self.st(self.coeffs, lam)
     
     def get(self):
         return self.coeffs
