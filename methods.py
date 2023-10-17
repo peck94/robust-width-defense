@@ -5,7 +5,7 @@ from pytorch_wavelets import DTCWT, IDTCWT, DWTForward, DWTInverse
 
 from swt import SWTForward, SWTInverse
 
-from coefficients import WaveletCoefficients, FourierCoefficients, ShearletCoefficients
+from coefficients import WaveletCoefficients, FourierCoefficients, ShearletCoefficients, DummyCoefficients
 
 from pytorch_shearlets.shearlets import ShearletSystem
 
@@ -63,10 +63,10 @@ class DummyMethod(Method):
         pass
     
     def forward(self, x_hat):
-        return x_hat
+        return DummyCoefficients(x_hat)
     
     def backward(self, z):
-        return z
+        return z.get()
 
 class ShearletMethod(Method):
     """
@@ -90,7 +90,7 @@ class ShearletMethod(Method):
         return ShearletCoefficients(self.system.decompose(x_hat))
     
     def backward(self, z):
-        return self.system.reconstruct(z.coeffs)
+        return self.system.reconstruct(z.get())
 
 class WaveletMethod(Method):
     """
@@ -120,7 +120,7 @@ class WaveletMethod(Method):
         return WaveletCoefficients(Xl, Xh)
     
     def backward(self, z):
-        return self.ifm(z.low, z.high)
+        return self.ifm(z.get())
 
 class DualTreeMethod(Method):
     """
@@ -146,7 +146,7 @@ class DualTreeMethod(Method):
         return WaveletCoefficients(Xl, Xh)
     
     def backward(self, z):
-        return self.ifm(z.low, z.high)
+        return self.ifm(z.get())
 
 class FourierMethod(Method):
     """
@@ -164,4 +164,4 @@ class FourierMethod(Method):
         return FourierCoefficients(fft2(x_hat))
     
     def backward(self, z):
-        return torch.real(ifft2(z.coeffs))
+        return torch.real(ifft2(z.get()))
