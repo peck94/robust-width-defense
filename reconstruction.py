@@ -74,13 +74,13 @@ class Reconstruction:
         noise = self.sigma * torch.randn(originals.shape).to(originals.device)
 
         # compute sparse representations
-        z = self.method.forward(normalize(originals) + noise)
+        coeffs = self.method.forward(normalize(originals) + noise)
 
         # threshold the coefficients
-        z = hard_thresh(z, self.lam)
+        coeffs.hard_thresh(self.lam)
 
         # reconstruct the images
-        x_hat = self.method.backward(z)
+        x_hat = self.method.backward(coeffs)
 
         # clamp to [0,1]
         x_hat = torch.clamp(x_hat, 0, 1)

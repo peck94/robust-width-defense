@@ -5,6 +5,8 @@ from pytorch_wavelets import DTCWT, IDTCWT, DWTForward, DWTInverse
 
 from swt import SWTForward, SWTInverse
 
+from coefficients import WaveletCoefficients, FourierCoefficients, ShearletCoefficients
+
 from pytorch_shearlets.shearlets import ShearletSystem
 
 class Method:
@@ -85,10 +87,10 @@ class ShearletMethod(Method):
         self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', self.device)
     
     def forward(self, x_hat):
-        return self.system.decompose(x_hat)
+        return ShearletCoefficients(self.system.decompose(x_hat))
     
     def backward(self, z):
-        return self.system.reconstruct(z)
+        return self.system.reconstruct(z.coeffs)
 
 class WaveletMethod(Method):
     """
@@ -114,10 +116,11 @@ class WaveletMethod(Method):
         trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
-        return self.xfm(x_hat.float())
+        Xl, Xh = self.xfm(x_hat.float())
+        return WaveletCoefficients(Xl, Xh)
     
     def backward(self, z):
-        return self.ifm(z)
+        return self.ifm(z.low, z.high)
 
 class DualTreeMethod(Method):
     """
@@ -140,10 +143,10 @@ class DualTreeMethod(Method):
     
     def forward(self, x_hat):
         Xl, Xh = self.xfm(x_hat.float())
-        return Xl, Xh
+        return WaveletCoefficients(Xl, Xh)
     
     def backward(self, z):
-        return self.ifm(z)
+        return self.ifm(z.low, z.high)
 
 class FourierMethod(Method):
     """
@@ -158,7 +161,7 @@ class FourierMethod(Method):
         pass
     
     def forward(self, x_hat):
-        return fft2(x_hat)
+        return FourierCoefficients(fft2(x_hat))
     
     def backward(self, z):
-        return torch.real(ifft2(z))
+        return torch.real(ifft2(z.coeffs))
