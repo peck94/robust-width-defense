@@ -15,16 +15,16 @@ class Reconstruction:
     2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
     """
 
-    def __init__(self, method='fourier', lam=0.9, sigma=0.1, tol=1e-4, **kwargs):
+    def __init__(self, method='fourier', alpha=2, sigma=0.1, tol=1e-4, **kwargs):
         """
         :param method: Name of the reconstruction method. See `get_method` for supported names.
-        :param lam: Parameter for thresholding.
+        :param alpha: Parameter for adaptive thresholding.
         :param sigma: Standard deviation of the noise.
         :param tol: Error tolerance.
         """
 
         self.tol = tol
-        self.lam = lam
+        self.alpha = alpha
         self.sigma = sigma
         
         self.method = Reconstruction.get_method(method)(**kwargs)
@@ -54,7 +54,7 @@ class Reconstruction:
         Initialize the Optuna trial.
         """
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
-        trial.suggest_float('lam', .01, 1e4, log=True)
+        trial.suggest_float('alpha', .01, 4, log=True)
         trial.suggest_float('sigma', 0.001, 1, log=True)
 
     def generate(self, originals):
@@ -67,7 +67,7 @@ class Reconstruction:
 
         # build the method if necessary
         if not self.built:
-            self.method.build(originals)
+            self.method.build(self, originals)
             self.built = True
 
         # compute noise
@@ -77,7 +77,7 @@ class Reconstruction:
         coeffs = self.method.forward(normalize(originals) + noise)
 
         # threshold the coefficients
-        coeffs.hard_thresh(self.lam)
+        coeffs.soft_thresh(self.alpha)
 
         # reconstruct the images
         x_hat = self.method.backward(coeffs)

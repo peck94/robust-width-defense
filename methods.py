@@ -17,10 +17,11 @@ class Method:
     def __init__(self, device):
         self.device = device
 
-    def build(self, x):
+    def build(self, reconstructor, x):
         """
         Prepares the method for a given input.
 
+        :param reconstructor: The reconstruction algorithm
         :param x: Input
         """
         pass
@@ -78,16 +79,18 @@ class ShearletMethod(Method):
 
         self.system = None
         self.scales = scales
+        self.sigma = 0
     
     @staticmethod
     def initialize_trial(trial):
         trial.suggest_int('scales', 1, 2)
     
-    def build(self, x):
+    def build(self, reconstructor, x):
         self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', self.device)
+        self.sigma = reconstructor.sigma
     
     def forward(self, x_hat):
-        return ShearletCoefficients(self.system.decompose(x_hat))
+        return ShearletCoefficients(self.system.decompose(x_hat), self)
     
     def backward(self, z):
         return self.system.reconstruct(z.get())

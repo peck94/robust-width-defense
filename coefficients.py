@@ -10,10 +10,10 @@ class Coefficients:
     def st(self, x, lam):
         return torch.zeros_like(x) + (abs(x) - lam) / abs(x) * x * (abs(x) > lam)
 
-    def hard_thresh(self, lam):
+    def hard_thresh(self, alpha):
         pass
 
-    def soft_thresh(self, lam):
+    def soft_thresh(self, alpha):
         pass
 
     def get(self):
@@ -25,10 +25,10 @@ class DummyCoefficients(Coefficients):
 
         self.coeffs = coeffs
     
-    def hard_thresh(self, lam):
+    def hard_thresh(self, alpha):
         pass
 
-    def soft_thresh(self, lam):
+    def soft_thresh(self, alpha):
         pass
 
     def get(self):
@@ -41,11 +41,11 @@ class WaveletCoefficients(Coefficients):
         self.low = low
         self.high = high
     
-    def hard_thresh(self, lam):
-        self.high = [self.ht(x, lam) for x in self.high]
+    def hard_thresh(self, alpha):
+        self.high = [self.ht(x, alpha) for x in self.high]
     
-    def soft_thresh(self, lam):
-        self.high = self.st(self.high, lam)
+    def soft_thresh(self, alpha):
+        self.high = self.st(self.high, alpha)
     
     def get(self):
         return self.low, self.high
@@ -56,26 +56,33 @@ class FourierCoefficients(Coefficients):
 
         self.coeffs = coeffs
 
-    def hard_thresh(self, lam):
-        self.coeffs = self.ht(self.coeffs, lam)
+    def hard_thresh(self, alpha):
+        self.coeffs = self.ht(self.coeffs, alpha)
     
-    def soft_thresh(self, lam):
-        self.coeffs = self.st(self.coeffs, lam)
+    def soft_thresh(self, alpha):
+        self.coeffs = self.st(self.coeffs, alpha)
     
     def get(self):
         return self.coeffs
 
 class ShearletCoefficients(Coefficients):
-    def __init__(self, coeffs):
+    def __init__(self, coeffs, method):
         super().__init__()
 
         self.coeffs = coeffs
+        self.method = method
 
-    def hard_thresh(self, lam):
-        self.coeffs = self.ht(self.coeffs, lam)
+    def hard_thresh(self, alpha):
+        self.coeffs = self.ht(self.coeffs, alpha)
     
-    def soft_thresh(self, lam):
-        self.coeffs = self.st(self.coeffs, lam)
-    
+    def soft_thresh(self, alpha):
+        system = self.method.system
+
+        weights = torch.ones_like(self.coeffs)
+        for j in range(len(system.RMS)):
+            weights[:,:,:,:,j] = system.RMS[j] * torch.ones(self.coeffs.shape[1], self.coeffs.shape[2])
+        T = alpha * weights * self.method.sigma
+        self.coeffs = self.st(self.coeffs, T)
+
     def get(self):
         return self.coeffs
