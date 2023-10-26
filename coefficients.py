@@ -45,7 +45,7 @@ class WaveletCoefficients(Coefficients):
         self.high = [self.ht(x, alpha) for x in self.high]
     
     def soft_thresh(self, alpha):
-        self.high = self.st(self.high, alpha)
+        self.high = [self.st(x, alpha) for x in self.high]
     
     def get(self):
         return self.low, self.high
@@ -71,16 +71,18 @@ class ShearletCoefficients(Coefficients):
 
         self.coeffs = coeffs
         self.method = method
-
-    def hard_thresh(self, alpha):
-        self.coeffs = self.ht(self.coeffs, alpha)
     
-    def soft_thresh(self, alpha):
+    def get_threshold(self, alpha):
         system = self.method.system
 
         weights = system.RMS * torch.ones_like(self.coeffs)
-        T = alpha * weights * self.method.sigma
-        self.coeffs = self.st(self.coeffs, T)
+        return alpha * weights * self.method.sigma
+
+    def hard_thresh(self, alpha):
+        self.coeffs = self.ht(self.coeffs, self.get_threshold(alpha))
+    
+    def soft_thresh(self, alpha):
+        self.coeffs = self.st(self.coeffs, self.get_threshold(alpha))
 
     def get(self):
         return self.coeffs
