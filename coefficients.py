@@ -78,9 +78,7 @@ class ShearletCoefficients(Coefficients):
     def soft_thresh(self, alpha):
         system = self.method.system
 
-        weights = torch.ones_like(self.coeffs)
-        for j in range(len(system.RMS)):
-            weights[:,:,:,:,j] = system.RMS[j] * torch.ones(self.coeffs.shape[1], self.coeffs.shape[2])
+        weights = system.RMS * torch.ones_like(self.coeffs)
         T = alpha * weights * self.method.sigma
         self.coeffs = self.st(self.coeffs, T)
 
