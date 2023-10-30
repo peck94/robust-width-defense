@@ -5,16 +5,21 @@ class Coefficients:
         pass
 
     def ht(self, x, lam):
-        return torch.where(abs(x) < lam, torch.zeros_like(x), x)
+        tau = self.get_threshold(lam)
+        return torch.where(abs(x) < tau, torch.zeros_like(x), x)
     
     def st(self, x, lam):
-        return torch.zeros_like(x) + (abs(x) - lam) / abs(x) * x * (abs(x) > lam)
+        tau = self.get_threshold(lam)
+        return torch.zeros_like(x) + (abs(x) - tau) / abs(x) * x * (abs(x) > tau)
 
     def hard_thresh(self, alpha):
         pass
 
     def soft_thresh(self, alpha):
         pass
+
+    def get_threshold(self, alpha):
+        return alpha
 
     def get(self):
         pass
@@ -73,16 +78,14 @@ class ShearletCoefficients(Coefficients):
         self.method = method
     
     def get_threshold(self, alpha):
-        system = self.method.system
-
-        weights = system.RMS * torch.ones_like(self.coeffs)
+        weights = self.method.system.RMS * torch.ones_like(self.coeffs)
         return alpha * weights * self.method.sigma
 
     def hard_thresh(self, alpha):
-        self.coeffs = self.ht(self.coeffs, self.get_threshold(alpha))
+        self.coeffs = self.ht(self.coeffs, alpha)
     
     def soft_thresh(self, alpha):
-        self.coeffs = self.st(self.coeffs, self.get_threshold(alpha))
+        self.coeffs = self.st(self.coeffs, alpha)
 
     def get(self):
         return self.coeffs
