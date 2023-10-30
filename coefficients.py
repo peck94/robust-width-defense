@@ -99,10 +99,10 @@ class ShearletCoefficients(Coefficients):
         n = self.coeffs.shape[0]
         c = self.coeffs.shape[1]
 
-        s_hats = torch.zeros(bands.shape[-1])
+        s_hats = torch.zeros(n, bands.shape[-1])
         for i in range(bands.shape[-1]):
-            s_hats[i] = torch.median(abs(bands[:, :, :, :, i].view(n, -1)), dim=1).values
-        s_hat = alpha * torch.median(s_hats) / 0.6745
+            s_hats[:, i] = torch.median(abs(bands[:, :, :, :, i].view(n, -1)), dim=1).values
+        s_hat = (alpha * torch.median(s_hats, dim=1).values / 0.6745).to(self.coeffs.device)
 
         s_y = torch.sqrt(torch.var(self.coeffs, dim=(1, 2, 3, 4)))
         s_x = torch.sqrt(torch.maximum(torch.zeros_like(s_y), torch.square(s_y) - torch.square(s_hat)))
