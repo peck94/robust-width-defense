@@ -40,11 +40,25 @@ class DummyCoefficients(Coefficients):
         return self.coeffs
 
 class WaveletCoefficients(Coefficients):
-    def __init__(self, low, high):
+    def __init__(self, coeffs):
         super().__init__()
 
-        self.low = low
-        self.high = high
+        self.coeffs = coeffs
+    
+    def hard_thresh(self, alpha):
+        self.coeffs = [self.ht(x, alpha) for x in self.coeffs]
+    
+    def soft_thresh(self, alpha):
+        self.coeffs = [self.st(x, alpha) for x in self.coeffs]
+    
+    def get(self):
+        return self.coeffs
+
+class DTCWTCoefficients(Coefficients):
+    def __init__(self, coeffs):
+        super().__init__()
+
+        self.low, self.high = coeffs
     
     def hard_thresh(self, alpha):
         self.high = [self.ht(x, alpha) for x in self.high]
@@ -78,8 +92,24 @@ class ShearletCoefficients(Coefficients):
         self.method = method
     
     def get_threshold(self, alpha):
-        weights = self.method.system.RMS * torch.ones_like(self.coeffs)
-        return alpha * weights * self.method.sigma
+        b = self.coeffs.shape[-1]
+        p = (b - 1) // 2
+
+        bands = self.coeffs[:, :, :, :, p:b]
+        n = self.coeffs.shape[0]
+        c = self.coeffs.shape[1]
+
+        s_hats = torch.zeros(bands.shape[-1])
+        for i in range(bands.shape[-1]):
+            s_hats[i] = torch.median(abs(bands[:, :, :, :, i].view(n, -1)), dim=1).values
+        s_hat = alpha * torch.median(s_hats) / 0.6745
+
+        s_y = torch.sqrt(torch.var(self.coeffs, dim=(1, 2, 3, 4)))
+        s_x = torch.sqrt(torch.maximum(torch.zeros_like(s_y), torch.square(s_y) - torch.square(s_hat)))
+
+        upper = abs(self.coeffs).view(n, -1).max(dim=1).values
+        tau = torch.minimum(torch.square(s_hat) / s_x, upper)
+        return tau.reshape(n, 1, 1, 1, 1).expand(-1, c, -1, -1, -1)
 
     def hard_thresh(self, alpha):
         self.coeffs = self.ht(self.coeffs, alpha)

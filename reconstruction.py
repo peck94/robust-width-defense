@@ -54,7 +54,7 @@ class Reconstruction:
         Initialize the Optuna trial.
         """
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
-        trial.suggest_float('alpha', .01, 4, log=True)
+        trial.suggest_float('alpha', .01, 10, log=True)
         trial.suggest_float('sigma', 0.001, 1, log=True)
 
     def generate(self, originals):

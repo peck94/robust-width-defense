@@ -1,11 +1,11 @@
 import torch
 from torch.fft import fft2, ifft2
 
-from pytorch_wavelets import DTCWT, IDTCWT, DWTForward, DWTInverse
+from pytorch_wavelets import DTCWT, IDTCWT
 
 from swt import SWTForward, SWTInverse
 
-from coefficients import WaveletCoefficients, FourierCoefficients, ShearletCoefficients, DummyCoefficients
+from coefficients import WaveletCoefficients, FourierCoefficients, ShearletCoefficients, DummyCoefficients, DTCWTCoefficients
 
 from pytorch_shearlets.shearlets import ShearletSystem
 
@@ -110,8 +110,8 @@ class WaveletMethod(Method):
         self.wavelet = wavelet
         self.levels = levels
 
-        self.xfm = DWTForward(J=self.levels, wave=self.wavelet).to(self.device)
-        self.ifm = DWTInverse(wave=self.wavelet).to(self.device)
+        self.xfm = SWTForward(J=self.levels, wave=self.wavelet).to(self.device)
+        self.ifm = SWTInverse(wave=self.wavelet).to(self.device)
     
     @staticmethod
     def initialize_trial(trial):
@@ -119,8 +119,8 @@ class WaveletMethod(Method):
         trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
-        Xl, Xh = self.xfm(x_hat.float())
-        return WaveletCoefficients(Xl, Xh)
+        coeffs = self.xfm(x_hat.float())
+        return WaveletCoefficients(coeffs)
     
     def backward(self, z):
         return self.ifm(z.get())
@@ -145,8 +145,8 @@ class DualTreeMethod(Method):
         trial.suggest_categorical('levels', [1, 2, 4, 8])
     
     def forward(self, x_hat):
-        Xl, Xh = self.xfm(x_hat.float())
-        return WaveletCoefficients(Xl, Xh)
+        coeffs = self.xfm(x_hat.float())
+        return DTCWTCoefficients(coeffs)
     
     def backward(self, z):
         return self.ifm(z.get())
