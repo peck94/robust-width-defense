@@ -15,7 +15,7 @@ class Reconstruction:
     2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
     """
 
-    def __init__(self, method='fourier', alpha=2, sigma=0.1, tol=1e-4, **kwargs):
+    def __init__(self, method='fourier', iterations=1, alpha=2, sigma=0.1, tol=1e-4, **kwargs):
         """
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         :param alpha: Parameter for adaptive thresholding.
@@ -26,6 +26,7 @@ class Reconstruction:
         self.tol = tol
         self.alpha = alpha
         self.sigma = sigma
+        self.iterations = iterations
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -56,6 +57,7 @@ class Reconstruction:
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('alpha', .01, 10, log=True)
         trial.suggest_float('sigma', 0.001, 1, log=True)
+        trial.suggest_categorical('iterations', list(range(1, 11)))
 
     def generate(self, originals):
         """
@@ -70,19 +72,20 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
 
-        # compute noise
-        noise = self.sigma * torch.randn(originals.shape).to(originals.device)
+        for _ in range(self.iterations):
+            # compute noise
+            noise = self.sigma * torch.randn(originals.shape).to(originals.device)
 
-        # compute sparse representations
-        coeffs = self.method.forward(normalize(originals) + noise)
+            # compute sparse representations
+            coeffs = self.method.forward(normalize(originals) + noise)
 
-        # threshold the coefficients
-        coeffs.soft_thresh(self.alpha)
+            # threshold the coefficients
+            coeffs.soft_thresh(self.alpha)
 
-        # reconstruct the images
-        x_hat = self.method.backward(coeffs)
+            # reconstruct the images
+            x_hat = self.method.backward(coeffs)
 
-        # clamp to [0,1]
-        x_hat = torch.clamp(x_hat, 0, 1)
+            # clamp to [0,1]
+            x_hat = torch.clamp(x_hat, 0, 1)
 
         return x_hat

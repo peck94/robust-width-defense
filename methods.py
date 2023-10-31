@@ -1,7 +1,7 @@
 import torch
 from torch.fft import fft2, ifft2
 
-from pytorch_wavelets import DTCWT, IDTCWT
+from pytorch_wavelets import DTCWT, IDTCWT, DWTForward, DWTInverse
 
 from swt import SWTForward, SWTInverse
 
@@ -110,8 +110,8 @@ class WaveletMethod(Method):
         self.wavelet = wavelet
         self.levels = levels
 
-        self.xfm = SWTForward(J=self.levels, wave=self.wavelet).to(self.device)
-        self.ifm = SWTInverse(wave=self.wavelet).to(self.device)
+        self.xfm = DWTForward(J=self.levels, wave=self.wavelet).to(self.device)
+        self.ifm = DWTInverse(wave=self.wavelet).to(self.device)
     
     @staticmethod
     def initialize_trial(trial):
