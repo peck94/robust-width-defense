@@ -72,12 +72,13 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
 
+        x_hat = normalize(originals.clone())
         for _ in range(self.iterations):
             # compute noise
             noise = self.sigma * torch.randn(originals.shape).to(originals.device)
 
             # compute sparse representations
-            coeffs = self.method.forward(normalize(originals) + noise)
+            coeffs = self.method.forward(x_hat + noise)
 
             # threshold the coefficients
             coeffs.soft_thresh(self.alpha)
