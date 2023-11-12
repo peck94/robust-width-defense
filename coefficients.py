@@ -114,30 +114,17 @@ class FourierCoefficients(Coefficients):
         return FourierCoefficients(self.coeffs + other.coeffs)
 
 class ShearletCoefficients(Coefficients):
-    def __init__(self, coeffs):
+    def __init__(self, coeffs, system):
         super().__init__()
 
         self.coeffs = coeffs
+        self.system = system
     
     def get_threshold(self, alpha):
-        b = self.coeffs.shape[-1]
-        p = (b - 1) // 2
+        weights = self.system.RMS * torch.ones_like(self.coeffs)
+        tau = alpha * weights
 
-        bands = self.coeffs[:, :, :, :, p:b]
-        n = self.coeffs.shape[0]
-        c = self.coeffs.shape[1]
-
-        s_hats = torch.zeros(n, bands.shape[-1])
-        for i in range(bands.shape[-1]):
-            s_hats[:, i] = torch.median(abs(bands[:, :, :, :, i].view(n, -1)), dim=1).values
-        s_hat = (alpha * torch.median(s_hats, dim=1).values / 0.6745).to(self.coeffs.device)
-
-        s_y = torch.sqrt(torch.var(self.coeffs, dim=(1, 2, 3, 4)))
-        s_x = torch.sqrt(torch.maximum(torch.zeros_like(s_y), torch.square(s_y) - torch.square(s_hat)))
-
-        upper = abs(self.coeffs).view(n, -1).max(dim=1).values
-        tau = torch.minimum(torch.square(s_hat) / s_x, upper)
-        return tau.reshape(n, 1, 1, 1, 1).expand(-1, c, -1, -1, -1)
+        return tau
 
     def hard_thresh(self, alpha):
         self.coeffs = self.ht(self.coeffs, alpha)
@@ -149,4 +136,4 @@ class ShearletCoefficients(Coefficients):
         return self.coeffs
     
     def __add__(self, other):
-        return ShearletCoefficients(self.coeffs + other.coeffs)
+        return ShearletCoefficients(self.coeffs + other.coeffs, self.system)

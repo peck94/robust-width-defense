@@ -88,7 +88,7 @@ class ShearletMethod(Method):
         self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', self.device)
     
     def forward(self, x_hat):
-        return ShearletCoefficients(self.system.decompose(x_hat))
+        return ShearletCoefficients(self.system.decompose(x_hat), self.system)
     
     def backward(self, z):
         return self.system.reconstruct(z.get())
