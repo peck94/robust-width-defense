@@ -10,9 +10,7 @@ from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod
 
 class Reconstruction:
     """
-    This class instantiates the reconstruction algorithm. It works in two steps:
-    1. Subsample the original inputs using one of the subsampling methods.
-    2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
+    This class instantiates the reconstruction algorithm.
     """
 
     def __init__(self, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
