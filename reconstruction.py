@@ -15,17 +15,15 @@ class Reconstruction:
     2. Iteratively reconstruct the original inputs using one of the reconstruction methods.
     """
 
-    def __init__(self, method='fourier', iterations=1, alpha=2, sigma=0.1, tol=1e-4, **kwargs):
+    def __init__(self, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
         """
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         :param alpha: Parameter for adaptive thresholding.
-        :param sigma: Standard deviation of the noise.
         :param tol: Error tolerance.
         """
 
         self.tol = tol
         self.alpha = alpha
-        self.sigma = sigma
         self.iterations = iterations
         
         self.method = Reconstruction.get_method(method)(**kwargs)
@@ -56,8 +54,7 @@ class Reconstruction:
         """
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('alpha', .01, 10, log=True)
-        trial.suggest_float('sigma', 0.001, 1, log=True)
-        trial.suggest_categorical('iterations', list(range(1, 11)))
+        trial.suggest_categorical('iterations', list(range(1, 101)))
 
     def generate(self, originals):
         """
@@ -71,22 +68,24 @@ class Reconstruction:
         if not self.built:
             self.method.build(self, originals)
             self.built = True
-
+        
+        # compute sparse representations
         x_hat = normalize(originals.clone())
-        for _ in range(self.iterations):
-            # compute noise
-            noise = self.sigma * torch.randn(originals.shape).to(originals.device)
+        y = x_hat.clone()
+        coeffs = self.method.forward(x_hat)
 
-            # compute sparse representations
-            coeffs = self.method.forward(x_hat + noise)
+        # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf
+        for _ in range(self.iterations):
+            # update the coefficients
+            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
 
             # threshold the coefficients
             coeffs.soft_thresh(self.alpha)
 
-            # reconstruct the images
-            x_hat = self.method.backward(coeffs)
+        # reconstruct the images
+        x_hat = self.method.backward(coeffs)
 
-            # clamp to [0,1]
-            x_hat = torch.clamp(x_hat, 0, 1)
+        # clamp to [0,1]
+        x_hat = torch.clamp(x_hat, 0, 1)
 
         return x_hat

@@ -79,7 +79,6 @@ class ShearletMethod(Method):
 
         self.system = None
         self.scales = scales
-        self.sigma = 0
     
     @staticmethod
     def initialize_trial(trial):
@@ -87,10 +86,9 @@ class ShearletMethod(Method):
     
     def build(self, reconstructor, x):
         self.system = ShearletSystem(x.shape[-2], x.shape[-1], self.scales, 'cd', self.device)
-        self.sigma = reconstructor.sigma
     
     def forward(self, x_hat):
-        return ShearletCoefficients(self.system.decompose(x_hat), self)
+        return ShearletCoefficients(self.system.decompose(x_hat))
     
     def backward(self, z):
         return self.system.reconstruct(z.get())

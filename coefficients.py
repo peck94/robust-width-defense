@@ -38,6 +38,9 @@ class DummyCoefficients(Coefficients):
 
     def get(self):
         return self.coeffs
+    
+    def __add__(self, other):
+        return DummyCoefficients(self.coeffs + other.coeffs)
 
 class WaveletCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -66,6 +69,11 @@ class WaveletCoefficients(Coefficients):
     
     def get(self):
         return self.low, self.high
+    
+    def __add__(self, other):
+        low = self.low + other.low
+        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return WaveletCoefficients((low, high))
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -81,6 +89,11 @@ class DTCWTCoefficients(Coefficients):
     
     def get(self):
         return self.low, self.high
+    
+    def __add__(self, other):
+        low = self.low + other.low
+        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return DTCWTCoefficients((low, high))
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -96,13 +109,15 @@ class FourierCoefficients(Coefficients):
     
     def get(self):
         return self.coeffs
+    
+    def __add__(self, other):
+        return FourierCoefficients(self.coeffs + other.coeffs)
 
 class ShearletCoefficients(Coefficients):
-    def __init__(self, coeffs, method):
+    def __init__(self, coeffs):
         super().__init__()
 
         self.coeffs = coeffs
-        self.method = method
     
     def get_threshold(self, alpha):
         b = self.coeffs.shape[-1]
@@ -132,3 +147,6 @@ class ShearletCoefficients(Coefficients):
 
     def get(self):
         return self.coeffs
+    
+    def __add__(self, other):
+        return ShearletCoefficients(self.coeffs + other.coeffs)
