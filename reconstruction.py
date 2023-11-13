@@ -72,7 +72,6 @@ class Reconstruction:
         # build the method if necessary
         if not self.built:
             self.method.build(self, originals)
-            self.sampler.build(originals.shape)
             self.built = True
         
         # measure the signal

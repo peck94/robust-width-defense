@@ -13,14 +13,6 @@ class Subsampler:
     def __init__(self, undersample_rate, device, **kwargs):
         self.undersample_rate = undersample_rate
         self.device = device
-    
-    def build(self, shape):
-        """
-        Build the method.
-        
-        :param shape: Shape of the inputs.
-        """
-        pass
 
     def __call__(self, originals):
         """
@@ -50,19 +42,18 @@ class RandomSubsampler(Subsampler):
 
     def __init__(self, undersample_rate, **kwargs):
         super().__init__(undersample_rate, **kwargs)
-    
-    def build(self, shape):
+
+    def __call__(self, originals):
         # create mask
-        n = np.prod(shape[2:])
+        n = np.prod(originals.shape[2:])
         m = int(n * self.undersample_rate)
-        self.mask = torch.from_numpy(np.random.permutation(
+        mask = torch.from_numpy(np.random.permutation(
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *shape[2:])).to(self.device)
-
-    def __call__(self, originals):
-        return originals * self.mask
+                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
+        
+        return originals * mask
 
 class FourierSubsampler(Subsampler):
     """
@@ -72,15 +63,14 @@ class FourierSubsampler(Subsampler):
     def __init__(self, undersample_rate, **kwargs):
         super().__init__(undersample_rate, **kwargs)
     
-    def build(self, shape):
+    def __call__(self, originals):
         # create mask
-        n = np.prod(shape[2:])
+        n = np.prod(originals.shape[2:])
         m = int(n * self.undersample_rate)
-        self.mask = torch.from_numpy(np.random.permutation(
+        mask = torch.from_numpy(np.random.permutation(
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *shape[2:])).to(self.device)
-    
-    def __call__(self, originals):
-        return torch.real(ifft2(fft2(originals) * self.mask))
+                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
+        
+        return torch.real(ifft2(fft2(originals) * mask))
