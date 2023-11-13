@@ -15,7 +15,7 @@ class Reconstruction:
     https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, undersample_rate=0.9, lam=1, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
+    def __init__(self, undersample_rate=0.9, lam=1, method='fourier', alpha=2, tol=1e-4, **kwargs):
         """
         :param undersample_rate: The undersampling rate (0 = discard everything, 1 = no undersampling).
         :param lam: Regularization parameter for reconstruction.
@@ -27,7 +27,6 @@ class Reconstruction:
         self.tol = tol
         self.alpha = alpha
         self.lam = lam
-        self.iterations = iterations
         self.undersample_rate = undersample_rate
         self.sampler = FourierSubsampler(self.undersample_rate, **kwargs)
         
@@ -57,11 +56,10 @@ class Reconstruction:
         """
         Initialize the Optuna trial.
         """
+        trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('lam', 1e-3, 10, log=True)
         trial.suggest_float('undersample_rate', .25, 1)
-        trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('alpha', .01, 10, log=True)
-        trial.suggest_categorical('iterations', list(range(1, 101)))
 
     def generate(self, originals):
         """
@@ -79,23 +77,31 @@ class Reconstruction:
         
         # measure the signal
         x_hat = self.sampler(normalize(originals))
+        x_old = x_hat.clone()
         y = x_hat.clone()
         
         # compute sparse representations
         coeffs = self.method.forward(x_hat)
 
         # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf
-        for _ in range(self.iterations):
+        for _ in range(100):
             # update the coefficients
             coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs)) * self.lam
 
             # threshold the coefficients
             coeffs.soft_thresh(self.alpha)
 
-        # reconstruct the images
-        x_hat = self.method.backward(coeffs)
+            # reconstruct the images
+            x_hat = self.method.backward(coeffs)
 
-        # clamp to [0,1]
-        x_hat = torch.clamp(x_hat, 0, 1)
+            # clamp to [0,1]
+            x_hat = torch.clamp(x_hat, 0, 1)
+
+            # check difference
+            err = torch.mean(torch.square(x_hat - x_old))
+            if err.item() < self.tol:
+                break
+
+            x_old = x_hat.clone()
 
         return x_hat

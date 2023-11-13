@@ -91,9 +91,6 @@ if __name__ == '__main__':
 
             progbar.set_postfix({'adv_rec_acc': adv_rec_acc/total, 'orig_rec_acc': orig_rec_acc/total})
 
-            if adv_rec_acc/total < .1 or orig_rec_acc/total < .1:
-                raise optuna.TrialPruned()
-
             if step >= args.max_batches - 1:
                 break
         
