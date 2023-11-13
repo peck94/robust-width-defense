@@ -41,6 +41,9 @@ class DummyCoefficients(Coefficients):
     
     def __add__(self, other):
         return DummyCoefficients(self.coeffs + other.coeffs)
+    
+    def __mul__(self, c):
+        return DummyCoefficients(c * self.coeffs)
 
 class WaveletCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -74,6 +77,11 @@ class WaveletCoefficients(Coefficients):
         low = self.low + other.low
         high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
         return WaveletCoefficients((low, high))
+    
+    def __mul__(self, c):
+        low = c * self.low
+        high = [c * h for h in self.high]
+        return WaveletCoefficients((low, high))
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -94,6 +102,11 @@ class DTCWTCoefficients(Coefficients):
         low = self.low + other.low
         high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
         return DTCWTCoefficients((low, high))
+    
+    def __mul__(self, c):
+        low = c * self.low
+        high = [c * h for h in self.high]
+        return DTCWTCoefficients((low, high))
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -112,6 +125,9 @@ class FourierCoefficients(Coefficients):
     
     def __add__(self, other):
         return FourierCoefficients(self.coeffs + other.coeffs)
+    
+    def __mul__(self, c):
+        return FourierCoefficients(c * self.coeffs)
 
 class ShearletCoefficients(Coefficients):
     def __init__(self, coeffs, system):
@@ -137,3 +153,6 @@ class ShearletCoefficients(Coefficients):
     
     def __add__(self, other):
         return ShearletCoefficients(self.coeffs + other.coeffs, self.system)
+    
+    def __mul__(self, c):
+        return ShearletCoefficients(c * self.coeffs, self.system)

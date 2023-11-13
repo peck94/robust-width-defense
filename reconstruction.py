@@ -15,9 +15,10 @@ class Reconstruction:
     https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, undersample_rate=0.9, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
+    def __init__(self, undersample_rate=0.9, lam=1, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
         """
         :param undersample_rate: The undersampling rate (0 = discard everything, 1 = no undersampling).
+        :param lam: Regularization parameter for reconstruction.
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         :param alpha: Parameter for adaptive thresholding.
         :param tol: Error tolerance.
@@ -25,6 +26,7 @@ class Reconstruction:
 
         self.tol = tol
         self.alpha = alpha
+        self.lam = lam
         self.iterations = iterations
         self.undersample_rate = undersample_rate
         self.sampler = FourierSubsampler(self.undersample_rate, **kwargs)
@@ -55,6 +57,7 @@ class Reconstruction:
         """
         Initialize the Optuna trial.
         """
+        trial.suggest_float('lam', 1e-3, 10, log=True)
         trial.suggest_float('undersample_rate', .25, 1)
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('alpha', .01, 10, log=True)
@@ -84,7 +87,7 @@ class Reconstruction:
         # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf
         for _ in range(self.iterations):
             # update the coefficients
-            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
+            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs)) * self.lam
 
             # threshold the coefficients
             coeffs.soft_thresh(self.alpha)
