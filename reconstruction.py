@@ -11,10 +11,13 @@ from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod
 class Reconstruction:
     """
     This class instantiates the reconstruction algorithm.
+
+    https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
+    def __init__(self, undersample_rate=0.9, method='fourier', iterations=1, alpha=2, tol=1e-4, **kwargs):
         """
+        :param undersample_rate: The undersampling rate (0 = discard everything, 1 = no undersampling).
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         :param alpha: Parameter for adaptive thresholding.
         :param tol: Error tolerance.
@@ -23,6 +26,8 @@ class Reconstruction:
         self.tol = tol
         self.alpha = alpha
         self.iterations = iterations
+        self.undersample_rate = undersample_rate
+        self.sampler = FourierSubsampler(self.undersample_rate, **kwargs)
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -50,6 +55,7 @@ class Reconstruction:
         """
         Initialize the Optuna trial.
         """
+        trial.suggest_float('undersample_rate', .25, 1)
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('alpha', .01, 10, log=True)
         trial.suggest_categorical('iterations', list(range(1, 101)))
@@ -65,11 +71,14 @@ class Reconstruction:
         # build the method if necessary
         if not self.built:
             self.method.build(self, originals)
+            self.sampler.build(originals.shape)
             self.built = True
         
-        # compute sparse representations
-        x_hat = normalize(originals.clone())
+        # measure the signal
+        x_hat = self.sampler(normalize(originals))
         y = x_hat.clone()
+        
+        # compute sparse representations
         coeffs = self.method.forward(x_hat)
 
         # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf

@@ -13,6 +13,14 @@ class Subsampler:
     def __init__(self, undersample_rate, device, **kwargs):
         self.undersample_rate = undersample_rate
         self.device = device
+    
+    def build(self, shape):
+        """
+        Build the method.
+        
+        :param shape: Shape of the inputs.
+        """
+        pass
 
     def __call__(self, originals):
         """
@@ -22,16 +30,6 @@ class Subsampler:
         :return: Array of subsampled images.
         """
         return originals
-    
-    def restore(self, y, x_hat):
-        """
-        Performs the inpainting operation.
-
-        :param y: Array of subsampled images.
-        :param x_hat: Array of reconstructed images.
-        :return: Array of inpainted images.
-        """
-        return x_hat
 
 class DummySubsampler(Subsampler):
     """
@@ -43,9 +41,6 @@ class DummySubsampler(Subsampler):
     
     def __call__(self, originals):
         return originals
-    
-    def restore(self, y, x_hat):
-        return x_hat
 
 class RandomSubsampler(Subsampler):
     """
@@ -56,24 +51,18 @@ class RandomSubsampler(Subsampler):
     def __init__(self, undersample_rate, **kwargs):
         super().__init__(undersample_rate, **kwargs)
     
-    def __call__(self, originals):
+    def build(self, shape):
         # create mask
-        n = np.prod(originals.shape[2:])
+        n = np.prod(shape[2:])
         m = int(n * self.undersample_rate)
         self.mask = torch.from_numpy(np.random.permutation(
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
+                    )).reshape(1, 1, *shape[2:])).to(self.device)
 
-        # undersample the signals
+    def __call__(self, originals):
         return originals * self.mask
-    
-    def restore(self, y, x_hat):
-        """
-        The inpainting operation restores the pixels that were not masked out.
-        """
-        return torch.where(self.mask > 0, y, x_hat)
 
 class FourierSubsampler(Subsampler):
     """
@@ -83,24 +72,15 @@ class FourierSubsampler(Subsampler):
     def __init__(self, undersample_rate, **kwargs):
         super().__init__(undersample_rate, **kwargs)
     
-    def __call__(self, originals):
+    def build(self, shape):
         # create mask
-        n = np.prod(originals.shape[2:])
+        n = np.prod(shape[2:])
         m = int(n * self.undersample_rate)
         self.mask = torch.from_numpy(np.random.permutation(
                     np.concatenate(
                         (np.ones(m),
                         np.zeros(n - m))
-                    )).reshape(1, 1, *originals.shape[2:])).to(self.device)
-
-        # undersample the signals
-        return torch.real(ifft2(fft2(originals) * self.mask))
+                    )).reshape(1, 1, *shape[2:])).to(self.device)
     
-    def restore(self, y, x_hat):
-        """
-        The inpainting operation restores the Fourier coefficients that were not masked out.
-        """
-        u = fft2(y)
-        v = fft2(x_hat)
-        z = torch.where(self.mask > 0, u, v)
-        return torch.real(ifft2(z))
+    def __call__(self, originals):
+        return torch.real(ifft2(fft2(originals) * self.mask))
