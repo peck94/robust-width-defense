@@ -28,7 +28,6 @@ class Reconstruction:
         self.alpha = alpha
         self.lam = lam
         self.undersample_rate = undersample_rate
-        self.sampler = FourierSubsampler(self.undersample_rate, **kwargs)
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -75,20 +74,19 @@ class Reconstruction:
             self.built = True
         
         # measure the signal
-        x_hat = self.sampler(normalize(originals))
-        x_old = x_hat.clone()
-        y = x_hat.clone()
-        
-        # compute sparse representations
-        coeffs = self.method.forward(x_hat)
+        coeffs = self.method.forward(normalize(originals))
+        coeffs.subsample(self.undersample_rate)
+        x_hat = self.method.backward(coeffs)
 
         # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf
+        x_old = x_hat.clone()
+        y = x_hat.clone()
         for _ in range(100):
             # update the coefficients
             coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs)) * self.lam
 
             # threshold the coefficients
-            coeffs.soft_thresh(self.alpha)
+            coeffs.hard_thresh(self.alpha)
 
             # reconstruct the images
             x_hat = self.method.backward(coeffs)
