@@ -4,8 +4,6 @@ import argparse
 
 import optuna
 
-import pywt
-
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -64,7 +62,7 @@ if __name__ == '__main__':
         method = Reconstruction.get_method(trial.params['method'])
         method.initialize_trial(trial)
 
-        reconstructor = Reconstruction(**trial.params, device=device)
+        reconstructor = Reconstruction(**trial.params, device=device, eps=args.eps)
 
         print(f'Running trial with params: {trial.params}')
 

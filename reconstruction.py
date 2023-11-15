@@ -15,19 +15,17 @@ class Reconstruction:
     https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, undersample_rate=0.9, lam=1, method='fourier', alpha=2, tol=1e-4, **kwargs):
+    def __init__(self, eps=4/255, mu=1, iterations=10, method='fourier', **kwargs):
         """
-        :param undersample_rate: The undersampling rate (0 = discard everything, 1 = no undersampling).
-        :param lam: Regularization parameter for reconstruction.
+        :param eps: Perturbation budget.
+        :param mu: Parameter for soft thresholding.
+        :param iterations: Number of iterations for soft thresholding.
         :param method: Name of the reconstruction method. See `get_method` for supported names.
-        :param alpha: Parameter for adaptive thresholding.
-        :param tol: Error tolerance.
         """
 
-        self.tol = tol
-        self.alpha = alpha
-        self.lam = lam
-        self.undersample_rate = undersample_rate
+        self.eps = eps
+        self.mu = mu
+        self.iterations = iterations
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -56,9 +54,8 @@ class Reconstruction:
         Initialize the Optuna trial.
         """
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
-        trial.suggest_float('lam', 1e-3, 10, log=True)
-        trial.suggest_float('undersample_rate', .25, 1)
-        trial.suggest_float('alpha', .01, 10, log=True)
+        trial.suggest_float('mu', 1e-3, 10, log=True)
+        trial.suggest_int('iterations', 1, 100)
 
     def generate(self, originals):
         """
@@ -73,32 +70,15 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
-        # measure the signal
+        # iterative soft thresholding
         coeffs = self.method.forward(normalize(originals))
-        coeffs.subsample(self.undersample_rate)
+        for _ in range(self.iterations):
+            coeffs.soft_thresh(self.mu)
+
+        # remove noise
+        coeffs.perturb(self.eps)
+
+        # reconstruct the sample
         x_hat = self.method.backward(coeffs)
-
-        # ISTA: https://www.stat.cmu.edu/~ryantibs/convexopt-F15/lectures/08-prox-grad.pdf
-        x_old = x_hat.clone()
-        y = x_hat.clone()
-        for _ in range(100):
-            # update the coefficients
-            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs)) * self.lam
-
-            # threshold the coefficients
-            coeffs.hard_thresh(self.alpha)
-
-            # reconstruct the images
-            x_hat = self.method.backward(coeffs)
-
-            # clamp to [0,1]
-            x_hat = torch.clamp(x_hat, 0, 1)
-
-            # check difference
-            err = torch.mean(torch.square(x_hat - x_old))
-            if err.item() < self.tol:
-                break
-
-            x_old = x_hat.clone()
 
         return x_hat

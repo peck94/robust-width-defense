@@ -2,18 +2,12 @@ import torch
 
 import numpy as np
 
-def mask_like(x, rate):
-    n = np.prod(x.shape[2:])
-    m = int(n * rate)
-    return torch.from_numpy(np.random.permutation(
-                    np.concatenate(
-                        (np.ones(m),
-                        np.zeros(n - m))
-                    )).reshape(1, 1, *x.shape[2:])).to(x.device).float()
-
 class Coefficients:
     def __init__(self):
         pass
+
+    def get_threshold(self, lam):
+        return lam
 
     def ht(self, x, lam):
         tau = self.get_threshold(lam)
@@ -21,7 +15,7 @@ class Coefficients:
     
     def st(self, x, lam):
         tau = self.get_threshold(lam)
-        return torch.zeros_like(x) + (abs(x) - tau) / abs(x) * x * (abs(x) > tau)
+        return torch.where(abs(x) < tau, torch.zeros_like(x), (abs(x) - tau) * x / abs(x))
 
     def hard_thresh(self, alpha):
         pass
@@ -29,13 +23,10 @@ class Coefficients:
     def soft_thresh(self, alpha):
         pass
 
-    def get_threshold(self, alpha):
-        return alpha
-
     def get(self):
         pass
 
-    def subsample(self, rate):
+    def perturb(self, eps):
         pass
 
 class DummyCoefficients(Coefficients):
@@ -43,28 +34,16 @@ class DummyCoefficients(Coefficients):
         super().__init__()
 
         self.coeffs = coeffs
-    
-    def hard_thresh(self, alpha):
-        pass
-
-    def soft_thresh(self, alpha):
-        pass
 
     def get(self):
         return self.coeffs
-    
-    def __add__(self, other):
-        return DummyCoefficients(self.coeffs + other.coeffs)
-    
-    def __mul__(self, c):
-        return DummyCoefficients(c * self.coeffs)
 
 class WaveletCoefficients(Coefficients):
     def __init__(self, coeffs):
         super().__init__()
 
         self.low, self.high = coeffs
-    
+
     def get_threshold(self, alpha):
         hh1 = self.high[0][:, :, -1, ...]
         n = hh1.shape[0]
@@ -87,18 +66,9 @@ class WaveletCoefficients(Coefficients):
     def get(self):
         return self.low, self.high
     
-    def __add__(self, other):
-        low = self.low + other.low
-        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
-        return WaveletCoefficients((low, high))
-    
-    def __mul__(self, c):
-        low = c * self.low
-        high = [c * h for h in self.high]
-        return WaveletCoefficients((low, high))
-    
-    def subsample(self, rate):
-        self.high = [h * mask_like(h, rate) for h in self.high]
+    def perturb(self, eps):
+        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * .5).to(h.device) - 1 for h in self.high]
+        self.high = [h + m*eps for h, m in zip(self.high, masks)]
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -115,18 +85,9 @@ class DTCWTCoefficients(Coefficients):
     def get(self):
         return self.low, self.high
     
-    def __add__(self, other):
-        low = self.low + other.low
-        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
-        return DTCWTCoefficients((low, high))
-    
-    def __mul__(self, c):
-        low = c * self.low
-        high = [c * h for h in self.high]
-        return DTCWTCoefficients((low, high))
-    
-    def subsample(self, rate):
-        self.high = [h * mask_like(h, rate) for h in self.high]
+    def perturb(self, eps):
+        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * .5).to(h.device) - 1 for h in self.high]
+        self.high = [h + m*eps for h, m in zip(self.high, masks)]
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -142,15 +103,10 @@ class FourierCoefficients(Coefficients):
     
     def get(self):
         return self.coeffs
-    
-    def __add__(self, other):
-        return FourierCoefficients(self.coeffs + other.coeffs)
-    
-    def __mul__(self, c):
-        return FourierCoefficients(c * self.coeffs)
-    
-    def subsample(self, rate):
-        self.coeffs = self.coeffs * mask_like(self.coeffs, rate)
+
+    def perturb(self, eps):
+        mask = 2*torch.bernoulli(torch.ones_like(torch.real(self.coeffs)) * .5) - 1
+        self.coeffs = self.coeffs + eps*mask
 
 class ShearletCoefficients(Coefficients):
     def __init__(self, coeffs, system):
@@ -174,12 +130,6 @@ class ShearletCoefficients(Coefficients):
     def get(self):
         return self.coeffs
     
-    def __add__(self, other):
-        return ShearletCoefficients(self.coeffs + other.coeffs, self.system)
-    
-    def __mul__(self, c):
-        return ShearletCoefficients(c * self.coeffs, self.system)
-    
-    def subsample(self, rate):
-        idx = (self.system.RMS <= .1)
-        self.coeffs[:, :, :, :, idx] = self.coeffs[:, :, :, :, idx] * mask_like(self.coeffs[:, :, :, :, idx], rate)
+    def perturb(self, eps):
+        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs) * .5) - 1
+        self.coeffs = self.coeffs + eps*mask
