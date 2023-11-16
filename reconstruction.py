@@ -1,10 +1,4 @@
-import numpy as np
-
-import torch
-
-from utils import soft_thresh, hard_thresh, normalize
-
-from subsamplers import FourierSubsampler, RandomSubsampler, DummySubsampler
+from utils import normalize
 
 from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod, DummyMethod
 
@@ -15,10 +9,12 @@ class Reconstruction:
     https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, eps=4/255, mu=1, iterations=10, method='fourier', **kwargs):
+    def __init__(self, eps=4/255, mu=1, lam=1, q=.5, iterations=10, method='fourier', **kwargs):
         """
         :param eps: Perturbation budget.
         :param mu: Parameter for soft thresholding.
+        :param lam: Scaling factor for perturbation budget.
+        :param q: Probability for Rademacher variables.
         :param iterations: Number of iterations for soft thresholding.
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         """
@@ -26,6 +22,8 @@ class Reconstruction:
         self.eps = eps
         self.mu = mu
         self.iterations = iterations
+        self.lam = lam
+        self.q = q
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -56,6 +54,8 @@ class Reconstruction:
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('mu', 0, 1)
         trial.suggest_int('iterations', 1, 100)
+        trial.suggest_float('q', 0, 1)
+        trial.suggest_float('lam', 1e-3, 10, log=True)
 
     def generate(self, originals):
         """
@@ -76,7 +76,7 @@ class Reconstruction:
             coeffs.soft_thresh(self.mu)
 
         # remove noise
-        coeffs.perturb(self.eps)
+        coeffs.perturb(self.lam * self.eps, self.q)
 
         # reconstruct the sample
         x_hat = self.method.backward(coeffs)

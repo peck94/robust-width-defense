@@ -26,7 +26,7 @@ class Coefficients:
     def get(self):
         pass
 
-    def perturb(self, eps):
+    def perturb(self, eps, q):
         pass
 
 class DummyCoefficients(Coefficients):
@@ -66,8 +66,8 @@ class WaveletCoefficients(Coefficients):
     def get(self):
         return self.low, self.high
     
-    def perturb(self, eps):
-        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * .5).to(h.device) - 1 for h in self.high]
+    def perturb(self, eps, q):
+        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * q).to(h.device) - 1 for h in self.high]
         self.high = [h + m*eps for h, m in zip(self.high, masks)]
 
 class DTCWTCoefficients(Coefficients):
@@ -85,8 +85,8 @@ class DTCWTCoefficients(Coefficients):
     def get(self):
         return self.low, self.high
     
-    def perturb(self, eps):
-        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * .5).to(h.device) - 1 for h in self.high]
+    def perturb(self, eps, q):
+        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * q).to(h.device) - 1 for h in self.high]
         self.high = [h + m*eps for h, m in zip(self.high, masks)]
 
 class FourierCoefficients(Coefficients):
@@ -104,8 +104,8 @@ class FourierCoefficients(Coefficients):
     def get(self):
         return self.coeffs
 
-    def perturb(self, eps):
-        mask = 2*torch.bernoulli(torch.ones_like(torch.real(self.coeffs)) * .5) - 1
+    def perturb(self, eps, q):
+        mask = 2*torch.bernoulli(torch.ones_like(torch.real(self.coeffs)) * q) - 1
         self.coeffs = self.coeffs + eps*mask
 
 class ShearletCoefficients(Coefficients):
@@ -130,7 +130,7 @@ class ShearletCoefficients(Coefficients):
     def get(self):
         return self.coeffs
     
-    def perturb(self, eps):
+    def perturb(self, eps, q):
         c = self.coeffs.shape[-1] - 1
-        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs[:c]) * .5) - 1
+        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs[:c]) * q) - 1
         self.coeffs[:c] = self.coeffs[:c] + eps*mask
