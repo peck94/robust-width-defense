@@ -132,5 +132,6 @@ class ShearletCoefficients(Coefficients):
     
     def perturb(self, eps, q):
         c = self.coeffs.shape[-1] - 1
-        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs[:c]) * q) - 1
-        self.coeffs[:c] = self.coeffs[:c] + eps*mask
+        b = c // 2
+        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs[b:c]) * q) - 1
+        self.coeffs[b:c] = self.coeffs[b:c] + eps*mask
