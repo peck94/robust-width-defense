@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+from sklearn.isotonic import IsotonicRegression
+
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
@@ -23,9 +25,10 @@ if __name__ == '__main__':
         obj1.append(trial.values[0])
         obj2.append(trial.values[1])
     
-    p = np.polyfit(obj1, obj2, deg=2)
+    isoreg = IsotonicRegression(y_min=0, y_max=1, increasing=False, out_of_bounds='clip').fit(obj1, obj2)
+
     xs = np.linspace(0, 1, 100)
-    ys = np.polyval(p, xs)
+    ys = isoreg.predict(xs)
     
     plt.title(args.name)
     plt.scatter(obj1, obj2, color='red')
