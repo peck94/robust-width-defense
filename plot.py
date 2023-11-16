@@ -66,5 +66,5 @@ if __name__ == '__main__':
     plt.xlim((0, 1))
     plt.ylim((0, 1))
 
-    ax.legend(handles=[Line2D([0], [0], color=COLORS[c], marker='o', label=c) for c in COLORS])
+    ax.legend(handles=[Line2D([0], [0], color='w', markerfacecolor=COLORS[c], marker='o', label=c) for c in COLORS])
     plt.savefig(f'plots/{args.name}.pdf')
