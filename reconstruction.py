@@ -70,13 +70,15 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
-        # iterative soft thresholding
+        # transform the input
         coeffs = self.method.forward(normalize(originals))
+
+        # perturb the coefficients
+        coeffs.perturb(self.lam * self.eps, self.q)
+
+        # iterative soft thresholding
         for _ in range(self.iterations):
             coeffs.soft_thresh(self.mu)
-
-        # remove noise
-        coeffs.perturb(self.lam * self.eps, self.q)
 
         # reconstruct the sample
         x_hat = self.method.backward(coeffs)
