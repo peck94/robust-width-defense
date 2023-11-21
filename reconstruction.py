@@ -1,3 +1,5 @@
+import torch
+
 from utils import normalize
 
 from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod, DummyMethod
@@ -9,21 +11,17 @@ class Reconstruction:
     https://arxiv.org/pdf/2002.04150.pdf
     """
 
-    def __init__(self, eps=4/255, mu=1, lam=1, q=.5, iterations=10, method='fourier', **kwargs):
+    def __init__(self, sigma=1, mu=1, iterations=10, method='fourier', **kwargs):
         """
-        :param eps: Perturbation budget.
+        :param sigma: Variance of noise.
         :param mu: Parameter for soft thresholding.
-        :param lam: Scaling factor for perturbation budget.
-        :param q: Probability for Rademacher variables.
         :param iterations: Number of iterations for soft thresholding.
         :param method: Name of the reconstruction method. See `get_method` for supported names.
         """
 
-        self.eps = eps
+        self.sigma = sigma
         self.mu = mu
         self.iterations = iterations
-        self.lam = lam
-        self.q = q
         
         self.method = Reconstruction.get_method(method)(**kwargs)
         self.built = False
@@ -54,8 +52,7 @@ class Reconstruction:
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('mu', 0, 1)
         trial.suggest_int('iterations', 1, 100)
-        trial.suggest_float('q', 0, 1)
-        trial.suggest_float('lam', 1e-3, 10, log=True)
+        trial.suggest_float('sigma', 0, 1)
 
     def generate(self, originals):
         """
@@ -70,17 +67,11 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
-        # transform the input
-        coeffs = self.method.forward(normalize(originals))
-
-        # perturb the coefficients
-        coeffs.perturb(self.lam * self.eps, self.q)
-
         # iterative soft thresholding
+        y = normalize(originals)
+        coeffs = self.method.forward(torch.zeros_like(originals))
         for _ in range(self.iterations):
+            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
             coeffs.soft_thresh(self.mu)
 
-        # reconstruct the sample
-        x_hat = self.method.backward(coeffs)
-
-        return x_hat
+        return self.method.backward(coeffs)

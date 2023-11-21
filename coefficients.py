@@ -26,7 +26,7 @@ class Coefficients:
     def get(self):
         pass
 
-    def perturb(self, eps, q):
+    def __add__(self, other):
         pass
 
 class DummyCoefficients(Coefficients):
@@ -37,6 +37,9 @@ class DummyCoefficients(Coefficients):
 
     def get(self):
         return self.coeffs
+
+    def __add__(self, other):
+        return self
 
 class WaveletCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -65,10 +68,11 @@ class WaveletCoefficients(Coefficients):
     
     def get(self):
         return self.low, self.high
-    
-    def perturb(self, eps, q):
-        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * q).to(h.device) - 1 for h in self.high]
-        self.high = [h + m*eps for h, m in zip(self.high, masks)]
+
+    def __add__(self, other):
+        self.low += other.low
+        self.high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return self
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -84,10 +88,11 @@ class DTCWTCoefficients(Coefficients):
     
     def get(self):
         return self.low, self.high
-    
-    def perturb(self, eps, q):
-        masks = [2*torch.bernoulli(torch.ones(h.shape[-1]) * q).to(h.device) - 1 for h in self.high]
-        self.high = [h + m*eps for h, m in zip(self.high, masks)]
+
+    def __add__(self, other):
+        self.low += other.low
+        self.high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return self
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -104,9 +109,9 @@ class FourierCoefficients(Coefficients):
     def get(self):
         return self.coeffs
 
-    def perturb(self, eps, q):
-        mask = 2*torch.bernoulli(torch.ones_like(torch.real(self.coeffs)) * q) - 1
-        self.coeffs = self.coeffs + eps*mask
+    def __add__(self, other):
+        self.coeffs += other.coeffs
+        return self
 
 class ShearletCoefficients(Coefficients):
     def __init__(self, coeffs, system):
@@ -129,9 +134,7 @@ class ShearletCoefficients(Coefficients):
 
     def get(self):
         return self.coeffs
-    
-    def perturb(self, eps, q):
-        c = self.coeffs.shape[-1] - 1
-        b = c // 2
-        mask = 2*torch.bernoulli(torch.ones_like(self.coeffs[b:c]) * q) - 1
-        self.coeffs[b:c] = self.coeffs[b:c] + eps*mask
+
+    def __add__(self, other):
+        self.coeffs += other.coeffs
+        return self
