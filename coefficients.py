@@ -90,7 +90,7 @@ class DTCWTCoefficients(Coefficients):
         return self.low, self.high
 
     def __add__(self, other):
-        self.low += other.low
+        self.low = self.low + other.low
         self.high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
         return self
 

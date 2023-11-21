@@ -8,10 +8,13 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from art.attacks.evasion import AutoProjectedGradientDescent
+from art.attacks.evasion import FastGradientMethod
+from art.estimators.certification.randomized_smoothing import PyTorchRandomizedSmoothing
 from art.estimators.classification import PyTorchClassifier
 
 from reconstruction import Reconstruction
+
+from smoother import Smoother
 
 from tqdm import tqdm
 
@@ -28,7 +31,6 @@ if __name__ == '__main__':
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
-    parser.add_argument('-iterations', type=int, default=10, help='AutoPGD iterations')
 
     args = parser.parse_args()
 
@@ -38,8 +40,7 @@ if __name__ == '__main__':
 
     # load model
     model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
-
-    classifier = PyTorchClassifier(
+    classifier =  PyTorchClassifier(
         model=model,
         loss=torch.nn.CrossEntropyLoss(),
         input_shape=(3, 224, 224),
@@ -63,32 +64,32 @@ if __name__ == '__main__':
         method.initialize_trial(trial)
 
         reconstructor = Reconstruction(**trial.params, device=device)
+        smoothed = PyTorchRandomizedSmoothing(
+            model=Smoother(model, reconstructor),
+            loss=torch.nn.CrossEntropyLoss(),
+            input_shape=(3, 224, 224),
+            nb_classes=1000,
+            clip_values=(0, 1),
+            scale=trial.params['sigma'],
+            alpha=.05
+        )
 
         print(f'Running trial with params: {trial.params}')
 
         adv_rec_acc = 0
         orig_rec_acc = 0
         total = 0
-        attack = AutoProjectedGradientDescent(estimator=classifier,
-                                              norm=np.inf,
-                                              eps=args.eps/255,
-                                              max_iter=10,
-                                              nb_random_init=5,
-                                              loss_type='difference_logits_ratio')
+        attack = FastGradientMethod(estimator=classifier, norm=np.inf, eps=args.eps/255)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
-            x_orig = reconstructor.generate(x_batch.float().to(device)).float()
-            x_adv = torch.from_numpy(attack.generate(x=x_batch.numpy(), y=y_batch.numpy())).float().to(device)
-            x_rec = reconstructor.generate(x_adv).float()
+            x_adv = torch.from_numpy(attack.generate(x=x_batch.float().numpy(), y=y_batch.numpy())).float().numpy()
 
-            if x_orig.shape[1] < 3:
-                raise optuna.TrialPruned()
+            with torch.no_grad():
+                y_pred_orig = smoothed.predict(x_batch.float().numpy())
+                orig_rec_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
 
-            y_pred_orig = model(x_orig).cpu().detach().numpy()
-            orig_rec_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
-
-            y_pred_rec = model(x_rec).cpu().detach().numpy()
-            adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
+                y_pred_rec = smoothed.predict(x_adv)
+                adv_rec_acc += (y_pred_rec.argmax(axis=1) == y_batch.numpy()).sum()
 
             total += x_batch.shape[0]
 

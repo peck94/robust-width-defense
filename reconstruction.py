@@ -52,7 +52,7 @@ class Reconstruction:
         trial.suggest_categorical('method', ['wavelet', 'fourier', 'dtcwt', 'shearlet'])
         trial.suggest_float('mu', 0, 1)
         trial.suggest_int('iterations', 1, 100)
-        trial.suggest_float('sigma', 0, 1)
+        trial.suggest_float('sigma', 1e-3, 1, log=True)
 
     def generate(self, originals):
         """
@@ -67,11 +67,8 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
-        # generate noise
-        eta = self.method.forward(self.sigma * torch.randn(originals.shape).to(originals.device))
-        y = self.method.backward(self.method.forward(normalize(originals)) + eta)
-        
         # iterative soft thresholding
+        y = normalize(originals)
         coeffs = self.method.forward(torch.zeros_like(originals))
         for _ in range(self.iterations):
             coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
