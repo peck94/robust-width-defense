@@ -67,8 +67,11 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
+        # generate noise
+        eta = self.method.forward(self.sigma * torch.randn(originals.shape).to(originals.device))
+        y = self.method.backward(self.method.forward(normalize(originals)) + eta)
+        
         # iterative soft thresholding
-        y = normalize(originals)
         coeffs = self.method.forward(torch.zeros_like(originals))
         for _ in range(self.iterations):
             coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
