@@ -9,7 +9,6 @@ import torchvision
 import torchvision.transforms as transforms
 
 from art.attacks.evasion import FastGradientMethod
-from art.estimators.certification.randomized_smoothing import PyTorchRandomizedSmoothing
 from art.estimators.classification import PyTorchClassifier
 
 from reconstruction import Reconstruction
@@ -64,14 +63,12 @@ if __name__ == '__main__':
         method.initialize_trial(trial)
 
         reconstructor = Reconstruction(**trial.params, device=device)
-        smoothed = PyTorchRandomizedSmoothing(
-            model=Smoother(model, reconstructor),
+        smoothed = PyTorchClassifier(
+            model=Smoother(model, reconstructor, trial.params['sigma']).to(device),
             loss=torch.nn.CrossEntropyLoss(),
             input_shape=(3, 224, 224),
             nb_classes=1000,
-            clip_values=(0, 1),
-            scale=trial.params['sigma'],
-            alpha=.05
+            clip_values=(0, 1)
         )
 
         print(f'Running trial with params: {trial.params}')
@@ -82,7 +79,7 @@ if __name__ == '__main__':
         attack = FastGradientMethod(estimator=classifier, norm=np.inf, eps=args.eps/255)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
-            x_adv = torch.from_numpy(attack.generate(x=x_batch.float().numpy(), y=y_batch.numpy())).float().numpy()
+            x_adv = attack.generate(x=x_batch.float().numpy(), y=y_batch.numpy()).astype(float)
 
             with torch.no_grad():
                 y_pred_orig = smoothed.predict(x_batch.float().numpy())
