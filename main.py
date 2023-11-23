@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack evaluation')
 
     args = parser.parse_args()
 
@@ -64,7 +65,7 @@ if __name__ == '__main__':
 
         reconstructor = Reconstruction(**trial.params, device=device)
         smoothed = PyTorchClassifier(
-            model=Smoother(model, reconstructor, trial.params['sigma']).to(device),
+            model=Smoother(model, reconstructor).to(device),
             loss=torch.nn.CrossEntropyLoss(),
             input_shape=(3, 224, 224),
             nb_classes=1000,
@@ -76,7 +77,7 @@ if __name__ == '__main__':
         adv_rec_acc = 0
         orig_rec_acc = 0
         total = 0
-        attack = FastGradientMethod(estimator=classifier, norm=np.inf, eps=args.eps/255)
+        attack = FastGradientMethod(estimator=smoothed if args.adapt else classifier, norm=np.inf, eps=args.eps/255)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
             x_adv = attack.generate(x=x_batch.float().numpy(), y=y_batch.numpy()).astype(float)
