@@ -68,7 +68,7 @@ if __name__ == '__main__':
             loss=torch.nn.CrossEntropyLoss(),
             input_shape=(3, 224, 224),
             nb_classes=1000,
-            clip_values=(0, 1)
+            clip_values=(0, 1),
         )
 
         print(f'Running trial with params: {trial.params}')

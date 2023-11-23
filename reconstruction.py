@@ -67,11 +67,19 @@ class Reconstruction:
             self.method.build(self, originals)
             self.built = True
         
+        # build the sensing operator
+        c = originals.shape[1]
+        phi = torch.nn.Conv2d(c, c, 3, padding='same', bias=False).to(originals.device)
+        psi = torch.nn.ConvTranspose2d(c, c, 3, padding=(1, 1), bias=False).to(originals.device)
+        with torch.no_grad():
+            torch.nn.init.normal_(phi.weight, 0, self.sigma)
+            psi.weight.copy_(phi.weight)
+        
         # iterative soft thresholding
         y = normalize(originals)
         coeffs = self.method.forward(torch.zeros_like(originals))
         for _ in range(self.iterations):
-            coeffs = coeffs + self.method.forward(y - self.method.backward(coeffs))
+            coeffs = coeffs + self.method.forward(psi(y - phi(self.method.backward(coeffs).float()).float()).float())
             coeffs.soft_thresh(self.mu)
 
         return self.method.backward(coeffs)
