@@ -8,7 +8,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from art.attacks.evasion import FastGradientMethod
+from art.attacks.evasion import AutoProjectedGradientDescent
 from art.estimators.classification import PyTorchClassifier
 
 from reconstruction import Reconstruction
@@ -77,7 +77,12 @@ if __name__ == '__main__':
         adv_rec_acc = 0
         orig_rec_acc = 0
         total = 0
-        attack = FastGradientMethod(estimator=smoothed if args.adapt else classifier, norm=np.inf, eps=args.eps/255)
+        attack = AutoProjectedGradientDescent(
+            estimator=smoothed if args.adapt else classifier,
+            norm=np.inf,
+            eps=args.eps/255,
+            max_iter=10,
+            nb_random_init=5)
         progbar = tqdm(data_loader, total=args.max_batches)
         for step, (x_batch, y_batch) in enumerate(progbar):
             x_adv = attack.generate(x=x_batch.float().numpy(), y=y_batch.numpy()).astype(float)

@@ -69,8 +69,8 @@ class Reconstruction:
         # build the sensing operator
         h1 = originals.shape[-1] // 2
         h2 = originals.shape[-1]
-        phi = lambda x: torch.nn.functional.interpolate(x, size=h1)
-        psi = lambda x: torch.nn.functional.interpolate(x, size=h2)
+        phi = lambda x: torch.nn.functional.interpolate(x, size=h1, mode='bilinear')
+        psi = lambda x: torch.nn.functional.interpolate(x, size=h2, mode='bilinear')
         
         # iterative soft thresholding
         y = normalize(phi(originals))
