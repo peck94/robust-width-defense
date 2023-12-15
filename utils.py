@@ -1,16 +1,5 @@
 import torch
 
-class Wrapper(torch.nn.Module):
-    def __init__(self, model, reconstructor):
-        super().__init__()
-
-        self.model = model
-        self.reconstructor = reconstructor
-    
-    def forward(self, x):
-        x_hat = self.reconstructor.generate(x.float())
-        return self.model(x_hat.float())
-
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
 

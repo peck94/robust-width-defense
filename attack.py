@@ -1,12 +1,14 @@
 import optuna
 
+import numpy as np
+
 import argparse
 
 import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from utils import Wrapper
+from smoother import Smoother
 
 from tqdm import tqdm
 
@@ -39,7 +41,9 @@ if __name__ == '__main__':
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
                                                   transforms.ToTensor()]))
-    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
+    indices = np.random.permutation(len(imagenet_data))[:5000]
+    subset_data = torch.utils.data.Subset(imagenet_data, indices)
+    data_loader = torch.utils.data.DataLoader(subset_data, batch_size=args.bs, shuffle=True, num_workers=1)
     
     # load parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
@@ -51,8 +55,8 @@ if __name__ == '__main__':
     model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
+    defense = Smoother(model, reconstructor).to(device)
     if args.adapt:
-        defense = Wrapper(model, reconstructor).to(device)
         adversary = AutoAttack(defense, norm='Linf', eps=args.eps/255, version='rand')
     else:
         adversary = AutoAttack(model, norm='Linf', eps=args.eps/255, version='standard')
@@ -64,15 +68,9 @@ if __name__ == '__main__':
     for x_batch, y_batch in progbar:
         x_adv = adversary.run_standard_evaluation(x_batch.to(device), y_batch.to(device), bs=x_batch.shape[0])
 
-        if args.adapt:
+        with torch.no_grad():
             y_pred_orig = defense(x_batch.to(device)).cpu().detach().numpy()
             y_pred = defense(x_adv).cpu().detach().numpy()
-        else:
-            x_orig = reconstructor.generate(x_batch.to(device))
-            x_rec = reconstructor.generate(x_adv)
-
-            y_pred_orig = model(x_orig.float()).cpu().detach().numpy()
-            y_pred = model(x_rec.float()).cpu().detach().numpy()
 
         orig_acc += (y_pred_orig.argmax(axis=1) == y_batch.numpy()).sum()
         adv_rec_acc += (y_pred.argmax(axis=1) == y_batch.numpy()).sum()
