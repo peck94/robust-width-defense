@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
+    parser.add_argument('-iterations', type=int, default=10, help='number of iterations of smoothing')
 
     args = parser.parse_args()
 
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
-    defense = Smoother(model, reconstructor).to(device)
+    defense = Smoother(model, reconstructor, args.iterations, verbose=True).to(device)
     if args.adapt:
         adversary = AutoAttack(defense, norm=args.norm, eps=args.eps/255, version='rand')
     else:
