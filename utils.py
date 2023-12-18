@@ -1,5 +1,30 @@
 import torch
 
+import numpy as np
+
+class Welford:
+    def __init__(self):
+        self.mean = 0
+        self.count = 0
+        self.M2 = 0
+    
+    def update(self, new_value):
+        self.count += 1
+
+        delta = new_value - self.mean
+        self.mean += delta / self.count
+
+        delta2 = new_value - self.mean
+        self.M2 += delta * delta2
+    
+    def update_all(self, new_values):
+        for new_value in new_values:
+            self.update(new_value)
+    
+    @property
+    def values(self):
+        return self.mean, self.M2 / (self.count - 1) if self.count > 1 else np.nan
+
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
 
