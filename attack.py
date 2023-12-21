@@ -8,6 +8,8 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+import robustbench as rb
+
 from smoother import Smoother
 
 from tqdm import tqdm
@@ -34,6 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
     parser.add_argument('-iterations', type=int, default=10, help='number of iterations of smoothing')
+    parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
 
     args = parser.parse_args()
 
@@ -58,7 +61,10 @@ if __name__ == '__main__':
     print(f'Loaded study with parameters: {trial.params}')
 
     # load model
-    model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
+    if args.rb:
+        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm)
+    else:
+        model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
     defense = Smoother(model, reconstructor, args.iterations, verbose=True).to(device)
