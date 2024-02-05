@@ -78,18 +78,18 @@ if __name__ == '__main__':
     progbar = tqdm(data_loader)
     for x_batch, y_batch in progbar:
         try:
-            x_adv = adversary.run_standard_evaluation(x_batch.to(device), y_batch.to(device), bs=x_batch.shape[0])
+            x_adv = adversary.run_standard_evaluation(x_batch.detach().cpu(), y_batch.detach().cpu(), bs=x_batch.shape[0])
 
             with torch.no_grad():
                 y_pred_orig = defense(x_batch.to(device)).cpu().detach().numpy()
-                y_pred = defense(x_adv).cpu().detach().numpy()
+                y_pred = defense(x_adv.to(device)).cpu().detach().numpy()
 
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
             progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
-        except RuntimeError:
-            pass
+        except RuntimeError as e:
+            print(e)
 
     print()
 
