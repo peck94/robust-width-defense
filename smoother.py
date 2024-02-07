@@ -24,6 +24,6 @@ class Smoother(torch.nn.Module):
 
         out = F.one_hot(y_preds, self.nb_classes)
         if self.logits:
-            return torch.log(out)
+            return torch.log(torch.maximum(out, 1e-3 * torch.ones_like(out)))
         else:
             return out
