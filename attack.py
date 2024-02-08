@@ -14,7 +14,7 @@ from smoother import Smoother
 
 from tqdm import tqdm
 
-from autoattack import AutoAttack
+from attacks import AutoAttack
 
 from reconstruction import Reconstruction
 
@@ -68,21 +68,18 @@ if __name__ == '__main__':
 
     # attack the model
     defense = Smoother(model, reconstructor, args.iterations, verbose=True, logits=args.adapt).to(device)
-    if args.adapt:
-        adversary = AutoAttack(defense, norm=args.norm, eps=args.eps/255, version='rand')
-    else:
-        adversary = AutoAttack(model, norm=args.norm, eps=args.eps/255, version='standard')
+    adversary = AutoAttack(args, model, defense)
 
     orig_acc = Welford()
     adv_acc = Welford()
     progbar = tqdm(data_loader)
     for x_batch, y_batch in progbar:
         try:
-            x_adv = adversary.run_standard_evaluation(x_batch.detach().cpu(), y_batch.detach().cpu(), bs=x_batch.shape[0])
+            x_adv = adversary.generate(x_batch, y_batch)
 
             with torch.no_grad():
-                y_pred_orig = defense(x_batch.to(device)).cpu().detach().numpy()
-                y_pred = defense(x_adv.to(device)).cpu().detach().numpy()
+                y_pred_orig = defense(x_batch.detach().to(device)).cpu().detach().numpy()
+                y_pred = defense(x_adv.detach().to(device)).cpu().detach().numpy()
 
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
