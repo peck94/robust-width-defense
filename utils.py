@@ -4,17 +4,17 @@ import numpy as np
 
 class Welford:
     def __init__(self):
-        self.mean = 0
+        self.mean = 0.0
         self.count = 0
-        self.M2 = 0
+        self.M2 = 0.0
     
     def update(self, new_value):
         self.count += 1
 
-        delta = new_value - self.mean
+        delta = float(new_value) - self.mean
         self.mean += delta / self.count
 
-        delta2 = new_value - self.mean
+        delta2 = float(new_value) - self.mean
         self.M2 += delta * delta2
     
     def update_all(self, new_values):
