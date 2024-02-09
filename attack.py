@@ -47,6 +47,8 @@ if __name__ == '__main__':
     # perform checks
     if args.adapt and args.attack == 'simba' and not args.softmax:
         warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
+    if args.adapt and args.attack == 'autoattack' and args.softmax:
+        warnings.warn('This attack expects logits. Consider removing the -softmax flag.', RuntimeWarning)
 
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
