@@ -4,6 +4,8 @@ import numpy as np
 
 import argparse
 
+import warnings
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -41,6 +43,10 @@ if __name__ == '__main__':
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
 
     args = parser.parse_args()
+
+    # perform checks
+    if args.adapt and args.attack == 'autoattack' and not args.logits:
+        warnings.warn('AutoAttack expects the model to produce logits. Consider passing the -logits flag.', RuntimeWarning)
 
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
