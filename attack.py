@@ -36,17 +36,17 @@ if __name__ == '__main__':
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
-    parser.add_argument('-logits', action='store_true', default=False, help='predict logits instead of probabilities')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
     parser.add_argument('-iterations', type=int, default=10, help='number of iterations of smoothing')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
+    parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
 
     args = parser.parse_args()
 
     # perform checks
-    if args.adapt and args.attack == 'autoattack' and not args.logits:
-        warnings.warn('AutoAttack expects the model to produce logits. Consider passing the -logits flag.', RuntimeWarning)
+    if args.adapt and args.attack == 'simba' and not args.softmax:
+        warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
 
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
 
     # attack the model
-    defense = Smoother(model, reconstructor, args.iterations, verbose=False, logits=args.logits).to(device)
+    defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
 
     if args.attack == 'autoattack':
         adversary = AutoAttack(args, model, defense)
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     progbar = tqdm(data_loader)
     for x_batch, y_batch in progbar:
         try:
-            x_adv = adversary.generate(x_batch, y_batch)
+            x_adv = adversary.generate(x_batch.detach(), y_batch.detach())
 
             with torch.no_grad():
                 y_pred_orig = defense(x_batch.detach().to(device)).cpu().detach().numpy()
