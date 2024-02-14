@@ -28,9 +28,9 @@ from utils import Welford
 
 async def main(args):
     # perform checks
-    if args.adapt and args.attack == 'simba' and not args.softmax:
+    if args.attack == 'simba' and not args.softmax:
         warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
-    if args.adapt and args.attack == 'autoattack' and args.softmax:
+    if args.attack == 'autoattack' and args.softmax:
         warnings.warn('This attack expects logits. Consider removing the -softmax flag.', RuntimeWarning)
 
     # get device
@@ -38,11 +38,13 @@ async def main(args):
     print(f'Device: {device}')
 
     # load data
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
                                               transform=transforms.Compose([
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
-                                                  transforms.ToTensor()]))
+                                                  transforms.ToTensor(),
+                                                  normalize]))
     indices = np.random.permutation(len(imagenet_data))[:5000]
     subset_data = torch.utils.data.Subset(imagenet_data, indices)
     data_loader = torch.utils.data.DataLoader(subset_data, batch_size=args.bs, shuffle=True, num_workers=1)
@@ -55,9 +57,10 @@ async def main(args):
 
     # load model
     if args.rb:
-        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm)
+        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm).to(device)
     else:
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device)
+    model.eval()
 
     # attack the model
     defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
