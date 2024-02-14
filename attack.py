@@ -57,7 +57,7 @@ async def main(args):
     if args.rb:
         model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm)
     else:
-        model = torch.hub.load('pytorch/vision', args.model, weights=args.weights).to(device)
+        model = torchvision.models.get_model(args.model, weights=args.weights).to(device)
 
     # attack the model
     defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
