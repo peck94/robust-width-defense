@@ -71,6 +71,7 @@ async def main(args):
     adv_acc = Welford()
     progbar = tqdm(data_loader)
     loop = asyncio.get_event_loop()
+    timeout = 0
     for x_batch, y_batch in progbar:
         try:
             x_adv = await asyncio.wait_for(loop.run_in_executor(None, lambda: adversary.generate(x_batch.detach(), y_batch.detach())), timeout=args.timeout)
@@ -82,9 +83,10 @@ async def main(args):
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
-            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
+            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0], 'timeout': timeout})
         except asyncio.TimeoutError:
             print('Timed out.')
+            timeout += 1
         except RuntimeError as e:
             print(e)
 
@@ -118,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
-    parser.add_argument('-timeout', type=int, default=60, help='per-batch timeout for attacks (in seconds)')
+    parser.add_argument('-timeout', default=None, type=int, help='per-batch timeout for attacks (in seconds)')
 
     args = parser.parse_args()
 
