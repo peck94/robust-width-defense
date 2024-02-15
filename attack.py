@@ -90,9 +90,15 @@ async def main(args):
 
             progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0], 'timeout': timeout})
             with open(args.log, 'w') as log:
+                orig_mean, orig_var = orig_acc.values
+                orig_err = 1.96 * np.sqrt(orig_var / orig_acc.count)
+
+                adv_mean, adv_var = adv_acc.values
+                adv_err = 1.96 * np.sqrt(adv_var / adv_acc.count)
+
                 print(json.dumps({
-                    'orig_acc': [orig_acc.values[0], orig_acc.values[1]],
-                    'adv_acc': [adv_acc.values[0], adv_acc.values[1]]
+                    'orig_acc': [orig_mean, orig_err],
+                    'adv_acc': [adv_mean, adv_err]
                 }, sort_keys=True, indent=4), file=log)
         except asyncio.TimeoutError:
             print('Timed out.')
