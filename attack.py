@@ -28,6 +28,8 @@ from tabulate import tabulate
 
 from utils import Welford
 
+from pathlib import Path
+
 async def main(args):
     # perform checks
     if args.attack == 'simba' and not args.softmax:
@@ -72,8 +74,16 @@ async def main(args):
     elif args.attack == 'simba':
         adversary = SimBA(args, model, defense)
 
+    # load log
     orig_acc = Welford()
     adv_acc = Welford()
+    if Path(args.log).exists():
+        with open(args.log, 'r') as log:
+            data = json.load(log)
+            orig_acc.from_json(data['orig_acc'])
+            adv_acc.from_json(data['adv_acc'])
+
+    # perform attacks
     progbar = tqdm(data_loader)
     loop = asyncio.get_event_loop()
     timeout = 0
@@ -97,8 +107,8 @@ async def main(args):
                 adv_err = 1.96 * np.sqrt(adv_var / adv_acc.count)
 
                 print(json.dumps({
-                    'orig_acc': [orig_mean, orig_err],
-                    'adv_acc': [adv_mean, adv_err]
+                    'orig_acc': orig_acc.to_json(),
+                    'adv_acc': adv_acc.to_json()
                 }, sort_keys=True, indent=4), file=log)
         except asyncio.TimeoutError:
             print('Timed out.')
