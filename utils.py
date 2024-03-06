@@ -2,6 +2,8 @@ import torch
 
 import numpy as np
 
+import json
+
 class Welford:
     def __init__(self):
         self.mean = 0.0
@@ -24,6 +26,14 @@ class Welford:
     @property
     def values(self):
         return self.mean, self.M2 / (self.count - 1) if self.count > 1 else np.nan
+    
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
+    
+    def from_json(self, data):
+        self.count = data['count']
+        self.mean = data['mean']
+        self.M2 = data['M2']
 
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
