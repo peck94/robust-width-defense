@@ -56,11 +56,12 @@ class Reconstruction:
         trial.suggest_float('q', .5, 1)
         trial.suggest_int('iterations', 1, 100)
 
-    def generate(self, originals):
+    def generate(self, originals, return_phi=False):
         """
         Generate the reconstructed images.
 
         :param originals: Array of original inputs.
+        :param return_phi: If True, returns the (phi, psi) tuple as well.
         :return: Array of reconstructed images.
         """
 
@@ -83,4 +84,20 @@ class Reconstruction:
 
             coeffs = self.method.forward(torch.clamp(self.method.backward(coeffs), 0, 1))
 
-        return normalize(self.method.backward(coeffs))
+        if return_phi:
+            return normalize(self.method.backward(coeffs)), phi, psi
+        else:
+            return normalize(self.method.backward(coeffs))
+
+    def certify(self, originals, iterations=10):
+        norms = []
+        for _ in range(iterations):
+            y2, phi, psi = self.generate(originals, return_phi=True)
+            y1 = phi(normalize(originals))
+
+            c1 = self.method.forward(psi(y1))
+            c2 = self.method.forward(psi(y2))
+
+            d = abs(c1 - c2).sum().cpu().detach().numpy()
+            norms.append(d)
+        return np.mean(norms)

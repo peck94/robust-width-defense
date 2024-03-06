@@ -6,8 +6,6 @@ import argparse
 
 import warnings
 
-import asyncio
-
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -26,7 +24,7 @@ from tabulate import tabulate
 
 from utils import Welford
 
-async def main(args):
+def main(args):
     # perform checks
     if args.adapt and args.attack == 'simba' and not args.softmax:
         warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
@@ -70,10 +68,9 @@ async def main(args):
     orig_acc = Welford()
     adv_acc = Welford()
     progbar = tqdm(data_loader)
-    loop = asyncio.get_event_loop()
     for x_batch, y_batch in progbar:
         try:
-            x_adv = await asyncio.wait_for(loop.run_in_executor(None, lambda: adversary.generate(x_batch.detach(), y_batch.detach())), timeout=args.timeout)
+            x_adv = adversary.generate(x_batch.detach(), y_batch.detach())
             
             with torch.no_grad():
                 y_pred_orig = defense(x_batch.detach().to(device)).cpu().detach().numpy()
@@ -83,8 +80,6 @@ async def main(args):
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
             progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
-        except asyncio.TimeoutError:
-            print('Timed out.')
         except RuntimeError as e:
             print(e)
 
@@ -118,8 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
-    parser.add_argument('-timeout', type=int, default=60, help='per-batch timeout for attacks (in seconds)')
 
     args = parser.parse_args()
 
-    asyncio.run(main(args))
+    main(args)
