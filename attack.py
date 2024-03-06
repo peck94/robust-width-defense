@@ -26,13 +26,9 @@ from tabulate import tabulate
 
 from utils import Welford
 
-<<<<<<< HEAD
-def main(args):
-=======
 from pathlib import Path
 
 async def main(args):
->>>>>>> 8198b8744c31ba9b307ff2d2ff5dc7d31b1c1e7a
     # perform checks
     if args.attack == 'simba' and not args.softmax:
         warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
@@ -87,11 +83,8 @@ async def main(args):
 
     # perform attacks
     progbar = tqdm(data_loader)
-<<<<<<< HEAD
-=======
     loop = asyncio.get_event_loop()
     timeout = 0
->>>>>>> 8198b8744c31ba9b307ff2d2ff5dc7d31b1c1e7a
     for x_batch, y_batch in progbar:
         try:
             x_adv = adversary.generate(x_batch.detach(), y_batch.detach())
@@ -103,9 +96,6 @@ async def main(args):
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
-<<<<<<< HEAD
-            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
-=======
             progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0], 'timeout': timeout})
             with open(args.log, 'w') as log:
                 orig_mean, orig_var = orig_acc.values
@@ -121,7 +111,6 @@ async def main(args):
         except asyncio.TimeoutError:
             print('Timed out.')
             timeout += 1
->>>>>>> 8198b8744c31ba9b307ff2d2ff5dc7d31b1c1e7a
         except RuntimeError as e:
             print(e)
 
@@ -156,11 +145,8 @@ if __name__ == '__main__':
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
-<<<<<<< HEAD
-=======
     parser.add_argument('-timeout', default=None, type=int, help='per-batch timeout for attacks (in seconds)')
     parser.add_argument('-log', type=str, default='output.json', help='output log')
->>>>>>> 8198b8744c31ba9b307ff2d2ff5dc7d31b1c1e7a
 
     args = parser.parse_args()
 
