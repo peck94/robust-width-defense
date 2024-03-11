@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # plot trials
     fig, ax = plt.subplots()
     plt.plot([0, 1], [0, 1], color='black', ls=':', alpha=.5)
-    plt.plot(best1s, best2s)
+    plt.plot(best1s, best2s, color='black', linewidth=2)
     plt.scatter(obj1s, obj2s, color=css, s=4)
     plt.xlabel('robust accuracy')
     plt.ylabel('standard accuracy')
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     plt.ylim((0, 1))
 
     plot_info(study.best_trials[idx[0]], 0, .9)
+    plot_info(study.best_trials[idx[len(study.best_trials) // 3]], .4, .9)
     plot_info(study.best_trials[idx[len(study.best_trials) // 2]], .4, .1)
     plot_info(study.best_trials[idx[-1]], .8, .9)
 
