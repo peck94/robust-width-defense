@@ -82,6 +82,7 @@ async def main(args):
             data = json.load(log)
             orig_acc.from_json(data['orig_acc'])
             adv_acc.from_json(data['adv_acc'])
+        print(f'Continuing with {orig_acc.values[0]:.2%} and {adv_acc.values[0]:.2%}')
 
     # perform attacks
     progbar = tqdm(data_loader)
