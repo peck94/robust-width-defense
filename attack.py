@@ -28,7 +28,7 @@ from utils import Welford
 
 from pathlib import Path
 
-async def main(args):
+def main(args):
     # perform checks
     if args.attack == 'simba' and not args.softmax:
         warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
@@ -65,7 +65,10 @@ async def main(args):
     model.eval()
 
     # attack the model
-    defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
+    if args.base:
+        defense = model
+    else:
+        defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
 
     if args.attack == 'autoattack':
         adversary = AutoAttack(args, model, defense)
@@ -84,8 +87,6 @@ async def main(args):
 
     # perform attacks
     progbar = tqdm(data_loader)
-    loop = asyncio.get_event_loop()
-    timeout = 0
     for x_batch, y_batch in progbar:
         try:
             x_adv = adversary.generate(x_batch.detach(), y_batch.detach())
@@ -97,7 +98,7 @@ async def main(args):
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
-            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0], 'timeout': timeout})
+            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
             with open(args.log, 'w') as log:
                 orig_mean, orig_var = orig_acc.values
                 orig_err = 1.96 * np.sqrt(orig_var / orig_acc.count)
@@ -109,9 +110,6 @@ async def main(args):
                     'orig_acc': orig_acc.to_json(),
                     'adv_acc': adv_acc.to_json()
                 }, sort_keys=True, indent=4), file=log)
-        except asyncio.TimeoutError:
-            print('Timed out.')
-            timeout += 1
         except RuntimeError as e:
             print(e)
 
@@ -146,8 +144,8 @@ if __name__ == '__main__':
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
-    parser.add_argument('-timeout', default=None, type=int, help='per-batch timeout for attacks (in seconds)')
     parser.add_argument('-log', type=str, default='output.json', help='output log')
+    parser.add_argument('-base', action='store_true', default=False, help='do not apply any defense')
 
     args = parser.parse_args()
 
