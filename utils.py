@@ -31,9 +31,10 @@ class Welford:
         return json.dumps(self, default=lambda o: o.__dict__)
     
     def from_json(self, data):
-        self.count = data['count']
-        self.mean = data['mean']
-        self.M2 = data['M2']
+        obj = json.loads(data)
+        self.count = obj['count']
+        self.mean = obj['mean']
+        self.M2 = obj['M2']
 
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
