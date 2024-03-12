@@ -40,13 +40,13 @@ def main(args):
     print(f'Device: {device}')
 
     # load data
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    tfs = [transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor()]
+    if not args.rb:
+        tfs.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
     imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
-                                              transform=transforms.Compose([
-                                                  transforms.Resize(256),
-                                                  transforms.CenterCrop(224),
-                                                  transforms.ToTensor(),
-                                                  normalize]))
+                                              transform=transforms.Compose(tfs))
     indices = np.random.permutation(len(imagenet_data))[:args.count]
     subset_data = torch.utils.data.Subset(imagenet_data, indices)
     data_loader = torch.utils.data.DataLoader(subset_data, batch_size=args.bs, shuffle=True, num_workers=1)
