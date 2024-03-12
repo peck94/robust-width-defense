@@ -21,7 +21,7 @@ class AutoAttack(Attack):
 
         if args.adapt:
             self.adversary = AA(defense, norm=args.norm, eps=args.eps/255, version='rand')
-            self.adversary.attacks_to_run = ['square', 'apgd-ce', 'apgd-dlr']
+            self.adversary.attacks_to_run = ['square']
         else:
             self.adversary = AA(model, norm=args.norm, eps=args.eps/255, version='standard')
     
