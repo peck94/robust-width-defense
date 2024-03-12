@@ -29,6 +29,21 @@ class Coefficients:
     def __add__(self, other):
         pass
 
+    def __rmul__(self, other):
+        pass
+
+    def __sub__(self, other):
+        return self + (-1) * other
+    
+    def __abs__(self):
+        pass
+
+    def sum(self):
+        pass
+    
+    def norm(self):
+        return abs(self).sum()
+
 class DummyCoefficients(Coefficients):
     def __init__(self, coeffs):
         super().__init__()
@@ -40,6 +55,15 @@ class DummyCoefficients(Coefficients):
 
     def __add__(self, other):
         return self
+    
+    def __rmul__(self, other):
+        return self
+    
+    def __abs__(self):
+        return self
+
+    def sum(self):
+        return 0
 
 class WaveletCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -70,9 +94,22 @@ class WaveletCoefficients(Coefficients):
         return self.low, self.high
 
     def __add__(self, other):
-        self.low += other.low
-        self.high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
-        return self
+        low = self.low + other.low
+        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return WaveletCoefficients((low, high))
+    
+    def __rmul__(self, other):
+        low = self.low * other
+        high = [other * h for h in self.high]
+        return WaveletCoefficients((low, high))
+    
+    def __abs__(self):
+        low = abs(low)
+        high = [abs(h) for h in self.high]
+        return WaveletCoefficients((low, high))
+
+    def sum(self):
+        return self.low + np.sum(self.high)
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -90,9 +127,22 @@ class DTCWTCoefficients(Coefficients):
         return self.low, self.high
 
     def __add__(self, other):
-        self.low = self.low + other.low
-        self.high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
-        return self
+        low = self.low + other.low
+        high = [h1 + h2 for h1, h2 in zip(self.high, other.high)]
+        return DTCWTCoefficients((low, high))
+    
+    def __rmul__(self, other):
+        low = self.low * other
+        high = [other * h for h in self.high]
+        return DTCWTCoefficients((low, high))
+    
+    def __abs__(self):
+        low = abs(low)
+        high = [abs(h) for h in self.high]
+        return DTCWTCoefficients((low, high))
+
+    def sum(self):
+        return self.low + np.sum(self.high)
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -110,8 +160,19 @@ class FourierCoefficients(Coefficients):
         return self.coeffs
 
     def __add__(self, other):
-        self.coeffs += other.coeffs
-        return self
+        coeffs = self.coeffs + other.coeffs
+        return FourierCoefficients(coeffs)
+    
+    def __rmul__(self, other):
+        coeffs = other * self.coeffs
+        return FourierCoefficients(coeffs)
+    
+    def __abs__(self):
+        coeffs = abs(self.coeffs)
+        return FourierCoefficients(coeffs)
+
+    def sum(self):
+        return self.coeffs.sum()
 
 class ShearletCoefficients(Coefficients):
     def __init__(self, coeffs, system):
@@ -136,5 +197,16 @@ class ShearletCoefficients(Coefficients):
         return self.coeffs
 
     def __add__(self, other):
-        self.coeffs += other.coeffs
-        return self
+        coeffs = self.coeffs + other.coeffs
+        return ShearletCoefficients(coeffs, self.system)
+    
+    def __rmul__(self, other):
+        coeffs = other * self.coeffs
+        return ShearletCoefficients(coeffs, self.system)
+    
+    def __abs__(self):
+        coeffs = abs(self.coeffs)
+        return ShearletCoefficients(coeffs, self.system)
+
+    def sum(self):
+        return self.coeffs.sum()

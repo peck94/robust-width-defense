@@ -8,8 +8,6 @@ import argparse
 
 import warnings
 
-import asyncio
-
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -90,7 +88,7 @@ async def main(args):
     timeout = 0
     for x_batch, y_batch in progbar:
         try:
-            x_adv = await asyncio.wait_for(loop.run_in_executor(None, lambda: adversary.generate(x_batch.detach(), y_batch.detach())), timeout=args.timeout)
+            x_adv = adversary.generate(x_batch.detach(), y_batch.detach())
             
             with torch.no_grad():
                 y_pred_orig = defense(x_batch.detach().to(device)).cpu().detach().numpy()
@@ -153,4 +151,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    asyncio.run(main(args))
+    main(args)
