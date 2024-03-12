@@ -28,7 +28,7 @@ def plot_info(trial, xt, yt):
     plt.plot([x, xt], [y, yt], color='black', linewidth=1)
     plt.text(xt, yt,
              f'Method: {params["method"]}\nScales: {levels}\nThreshold: {params["mu"]:.2f}\nSubsampling: {params["q"]:.2%}\nIterations: {params["iterations"]}',
-             backgroundcolor='black', color='white', fontsize='small')
+             backgroundcolor='black', color='cyan', fontsize='small', fontweight='bold', fontfamily='monospace')
 
 
 if __name__ == '__main__':
