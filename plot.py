@@ -28,7 +28,7 @@ def plot_info(trial, xt, yt):
     plt.plot([x, xt], [y, yt], color='black', linewidth=1)
     plt.text(xt, yt,
              f'Method: {params["method"]}\nScales: {levels}\nThreshold: {params["mu"]:.2f}\nSubsampling: {params["q"]:.2%}\nIterations: {params["iterations"]}',
-             backgroundcolor='black', color='cyan', fontsize='small', fontweight='bold', fontfamily='monospace')
+             backgroundcolor='black', color='cyan', fontsize='medium', fontweight='bold', fontfamily='monospace')
 
 
 if __name__ == '__main__':
@@ -72,10 +72,10 @@ if __name__ == '__main__':
     plt.xlim((0, 1))
     plt.ylim((0, 1))
 
-    plot_info(study.best_trials[idx[0]], 0, .9)
-    plot_info(study.best_trials[idx[len(study.best_trials) // 3]], .4, .9)
+    plot_info(study.best_trials[idx[0]], .1, .9)
+    plot_info(study.best_trials[idx[len(study.best_trials) // 3]], .6, .9)
     plot_info(study.best_trials[idx[len(study.best_trials) // 2]], .4, .1)
-    plot_info(study.best_trials[idx[-1]], .8, .9)
+    plot_info(study.best_trials[idx[-1]], .8, .5)
 
     if args.method:
         ax.legend(handles=[Line2D([0], [0], color='w', markerfacecolor=COLORS[args.method], marker='o', label=args.method)])
