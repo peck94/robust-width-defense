@@ -20,7 +20,7 @@ class AutoAttack(Attack):
         super().__init__(args, model, defense)
 
         if args.adapt:
-            self.adversary = AA(defense, norm=args.norm, eps=args.eps/255, version='standard' if args.base else 'rand')
+            self.adversary = AA(defense, norm=args.norm, eps=args.eps/255, version='standard')
             self.adversary.attacks_to_run = ['square']
         else:
             self.adversary = AA(model, norm=args.norm, eps=args.eps/255, version='standard')
