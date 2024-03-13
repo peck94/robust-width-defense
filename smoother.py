@@ -15,14 +15,15 @@ class Smoother(torch.nn.Module):
         self.softmax = softmax
     
     def forward(self, x):
-        y_out = torch.zeros(x.shape[0], self.nb_classes).to(x.device)
+        y_preds = []
         for _ in trange(self.iterations) if self.verbose else range(self.iterations):
             x_rec = self.reconstructor.generate(x.float()).float()
-            y_pred = self.model(x_rec)
-            y_out = y_out + y_pred
-        y_out = y_out / self.iterations
+            y_pred = self.model(x_rec).argmax(dim=1)
+            y_preds.append(y_pred)
+        y_preds = torch.mode(torch.stack(y_preds), dim=0).values
 
+        out = F.one_hot(y_preds, self.nb_classes)
         if self.softmax:
-            return F.softmax(y_out, dim=1)
+            return out
         else:
-            return y_out
+            return torch.log(torch.maximum(out, 1e-3 * torch.ones_like(out)))
