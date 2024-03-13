@@ -13,6 +13,7 @@ from tabulate import tabulate
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('log', type=str, help='log file')
+    parser.add_argument('-latex', action='store_true', default=False, help='output LaTeX code')
 
     args = parser.parse_args()
 
@@ -31,7 +32,10 @@ if __name__ == '__main__':
     adv_mean, adv_var = adv_acc.values
     adv_err = 1.96 * np.sqrt(adv_var / adv_acc.count)
 
-    print(tabulate([
-        ['Standard', f'{orig_mean:.2%}', f'{orig_err:.2%}'],
-        ['Robust', f'{adv_mean:.2%}', f'{adv_err:.2%}']
-    ], headers=['Setting', 'Accuracy', 'Error']))
+    if args.latex:
+        print(f'{100*orig_mean:.2f}\\% $\\pm$ {100*orig_err:.2f}\\% & {100*adv_mean:.2f}\\% $\\pm$ {100*adv_err:.2f}\\%')
+    else:
+        print(tabulate([
+            ['Standard', f'{orig_mean:.2%}', f'{orig_err:.2%}'],
+            ['Robust', f'{adv_mean:.2%}', f'{adv_err:.2%}']
+        ], headers=['Setting', 'Accuracy', 'Error']))
