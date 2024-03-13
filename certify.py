@@ -44,6 +44,12 @@ if __name__ == '__main__':
     print(f'Loaded study with parameters: {trial.params}')
 
     # compute bounds
-    for x_batch, y_batch in tqdm(data_loader):
-        norms = reconstructor.certify(x_batch.to(device))
-        print(norms)
+    total_bound = 0
+    total = 0
+    progbar = tqdm(data_loader)
+    for x_batch, y_batch in progbar:
+        total_bound += reconstructor.certify(x_batch.to(device)).item()
+        total += x_batch.shape[0]
+        progbar.set_postfix({'bound': total_bound / total})
+    
+    print(f'Bound: {total_bound / total:.2f}')
