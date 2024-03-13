@@ -20,8 +20,8 @@ class AutoAttack(Attack):
         super().__init__(args, model, defense)
 
         if args.adapt:
-            self.adversary = AA(defense, norm=args.norm, eps=args.eps/255, version='standard')
-            self.adversary.attacks_to_run = ['square']
+            self.adversary = AA(defense, norm=args.norm, eps=args.eps/255, version='custom', attacks_to_run=['square'])
+            self.adversary.square.n_queries = 500
         else:
             self.adversary = AA(model, norm=args.norm, eps=args.eps/255, version='standard')
     
