@@ -1,7 +1,5 @@
 import torch
 
-import numpy as np
-
 class Coefficients:
     def __init__(self):
         pass
@@ -70,19 +68,6 @@ class WaveletCoefficients(Coefficients):
         super().__init__()
 
         self.low, self.high = coeffs
-
-    def get_threshold(self, alpha):
-        hh1 = self.high[0][:, :, -1, ...]
-        n = hh1.shape[0]
-
-        s_hat = alpha * torch.median(abs(hh1.reshape(n, -1)), dim=1).values / 0.6745
-        s_y = torch.sqrt(torch.var(self.high[0], dim=(1, 2, 3, 4)))
-        s_x = torch.sqrt(torch.maximum(torch.zeros_like(s_y), torch.square(s_y) - torch.square(s_hat)))
-
-        upper = abs(self.high[0]).reshape(n, -1).max(dim=1).values
-        tau = torch.minimum(torch.square(s_hat) / s_x, upper)
-
-        return tau.reshape(n, 1, 1, 1, 1)
     
     def hard_thresh(self, alpha):
         self.high = [self.ht(x, alpha) for x in self.high]
@@ -104,12 +89,13 @@ class WaveletCoefficients(Coefficients):
         return WaveletCoefficients((low, high))
     
     def __abs__(self):
-        low = abs(low)
+        low = abs(self.low)
         high = [abs(h) for h in self.high]
         return WaveletCoefficients((low, high))
 
     def sum(self):
-        return self.low + np.sum(self.high)
+        hs = torch.cat([h.reshape(h.shape[0], -1) for h in self.high], 1)
+        return torch.sum(self.low.reshape(self.low.shape[0], -1), dim=1) + torch.sum(hs, dim=1)
 
 class DTCWTCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -137,12 +123,13 @@ class DTCWTCoefficients(Coefficients):
         return DTCWTCoefficients((low, high))
     
     def __abs__(self):
-        low = abs(low)
+        low = abs(self.low)
         high = [abs(h) for h in self.high]
         return DTCWTCoefficients((low, high))
 
     def sum(self):
-        return self.low + np.sum(self.high)
+        hs = torch.cat([h.reshape(h.shape[0], -1) for h in self.high], 1)
+        return torch.sum(self.low.reshape(self.low.shape[0], -1), dim=1) + torch.sum(hs, dim=1)
 
 class FourierCoefficients(Coefficients):
     def __init__(self, coeffs):
@@ -172,7 +159,7 @@ class FourierCoefficients(Coefficients):
         return FourierCoefficients(coeffs)
 
     def sum(self):
-        return self.coeffs.sum()
+        return self.coeffs.sum(dim=[1, 2, 3])
 
 class ShearletCoefficients(Coefficients):
     def __init__(self, coeffs, system):
@@ -209,4 +196,4 @@ class ShearletCoefficients(Coefficients):
         return ShearletCoefficients(coeffs, self.system)
 
     def sum(self):
-        return self.coeffs.sum()
+        return self.coeffs.sum(dim=[1, 2, 3, 4])

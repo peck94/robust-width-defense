@@ -6,6 +6,15 @@ from utils import normalize
 
 from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod, DummyMethod
 
+def ensure_built(m):
+    def wrapper(self, originals, *args):
+        # build the method if necessary
+        if not self.built:
+            self.method.build(self, originals)
+            self.built = True
+        return m(self, originals, *args)
+    return wrapper
+
 class Reconstruction:
     """
     This class instantiates the reconstruction algorithm.
@@ -56,6 +65,7 @@ class Reconstruction:
         trial.suggest_float('q', .5, 1)
         trial.suggest_int('iterations', 1, 100)
 
+    @ensure_built
     def generate(self, originals, return_phi=False):
         """
         Generate the reconstructed images.
@@ -64,12 +74,6 @@ class Reconstruction:
         :param return_phi: If True, returns the (phi, psi) tuple as well.
         :return: Array of reconstructed images.
         """
-
-        # build the method if necessary
-        if not self.built:
-            self.method.build(self, originals)
-            self.built = True
-        
         # build the sensing operator
         mask = torch.bernoulli(torch.ones_like(originals) * self.q)
         phi = lambda x: torch.fft.fft2(x) * mask
@@ -89,15 +93,23 @@ class Reconstruction:
         else:
             return normalize(self.method.backward(coeffs))
 
-    def certify(self, originals, iterations=10):
-        norms = []
-        for _ in range(iterations):
-            y2, phi, psi = self.generate(originals, return_phi=True)
-            y1 = phi(normalize(originals))
+    @ensure_built
+    def certify(self, originals, lam=.1, tol=1e-4):
+        orig = self.method.forward(originals)
+        d = self.method.forward(originals)
+        b = self.method.forward(torch.zeros_like(originals).to(originals.device))
+        u = self.method.forward(torch.zeros_like(originals).to(originals.device))
 
-            c1 = self.method.forward(psi(y1))
-            c2 = self.method.forward(psi(y2))
+        old_result, new_result = 0, np.inf
+        while abs(old_result - new_result) > tol:
+            u = d - b - orig
+            u.soft_thresh(lam)
+            u = u + orig
 
-            d = abs(c1 - c2).sum().cpu().detach().numpy()
-            norms.append(d)
-        return np.mean(norms)
+            d = u + b
+            d.soft_thresh(lam)
+
+            b = b + u - d
+            old_result, new_result = new_result, torch.sum((orig - d).norm())
+        
+        return new_result
