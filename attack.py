@@ -135,7 +135,7 @@ if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-model', type=str, default='resnet50', help='model name')
-    parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
+    parser.add_argument('-weights', type=str, default='IMAGENET1K_V1', help='model weights')
     parser.add_argument('-count', type=int, default=1000, help='number of test samples')
     parser.add_argument('-name', type=str, default='cs-test', help='study name')
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
