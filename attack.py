@@ -70,10 +70,7 @@ def main(args):
     else:
         defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
 
-    if args.attack == 'autoattack':
-        adversary = AutoAttack(args, model, defense)
-    elif args.attack == 'simba':
-        adversary = SimBA(args, model, defense)
+    adversary = AutoAttack(args, model, defense)
 
     # load log
     orig_acc = Welford()
@@ -147,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
     parser.add_argument('-iterations', type=int, default=10, help='number of iterations of smoothing')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
-    parser.add_argument('-attack', choices=['autoattack', 'simba'], help='adversarial attack to run')
+    parser.add_argument('-attack', choices=['square', 'apgd'], help='adversarial attack to run')
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
     parser.add_argument('-log', type=str, default='output.json', help='output log')
     parser.add_argument('-base', action='store_true', default=False, help='do not apply any defense')
