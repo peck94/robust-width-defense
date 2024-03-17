@@ -20,10 +20,10 @@ MAPPING = {
     'liu2023comprehensive_swin-l': 'Liu et al. (2023)',
     'debenedetti2022light_xcit-l12': 'Debenedetti et al. (2023)',
 
-    'resnet50_base': 'ResNet50',
-    'swin_t_base': 'Swin Transformer',
-    'vit_b_16_base': 'Vision Transformer',
-    'wide_resnet101_base': 'WideResNet101'
+    'resnet50': 'ResNet50',
+    'swin_t': 'Swin Transformer',
+    'vit_b_16': 'Vision Transformer',
+    'wide_resnet101': 'WideResNet101'
 }
 
 if __name__ == '__main__':
