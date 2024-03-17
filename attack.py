@@ -83,7 +83,12 @@ def main(args):
             data = json.load(log)
             orig_acc.from_json(data['orig_acc'])
             adv_acc.from_json(data['adv_acc'])
-        print(f'Continuing with {orig_acc.values[0]:.2%} and {adv_acc.values[0]:.2%}')
+        
+        if args.overwrite or (orig_acc.count < 1000 and adv_acc.count < 1000):
+            print(f'Continuing with {orig_acc.values[0]:.2%} and {adv_acc.values[0]:.2%}')
+        else:
+            print('Experiment already completed.')
+            quit()
 
     # perform attacks
     progbar = tqdm(data_loader)
@@ -146,6 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
     parser.add_argument('-log', type=str, default='output.json', help='output log')
     parser.add_argument('-base', action='store_true', default=False, help='do not apply any defense')
+    parser.add_argument('-overwrite', action='store_true', default=False, help='overwrite completed experiments')
 
     args = parser.parse_args()
 
