@@ -18,7 +18,7 @@ from smoother import Smoother
 
 from tqdm import tqdm
 
-from attacks import AutoAttack, SimBA
+from attacks import AutoAttack
 
 from reconstruction import Reconstruction
 
