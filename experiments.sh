@@ -5,13 +5,13 @@
 # base: attack baseline models using Square attack
 # robust: attack RobustBench models using Square attack
 # cs: attack baseline models defended using our CS method with Square attack (black-box setting, no surrogate)
-# xfer: attack baseline models defended using our CS method with AutoAttack adversarials transferred from unprotected baseline (black-box setting, surrogate)
+# xfer: attack models with APGD adversarials transferred from unprotected baseline (black-box setting, surrogate)
 
 ###################
 # Baseline models #
 ###################
 
-# Attack the baseline models directly.
+# Attack the baseline models directly using Square.
 
 # ResNet-50
 python attack.py -log logs/base/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 273 -iterations 1 -attack square
@@ -30,6 +30,8 @@ python attack.py -log logs/base/swin_t.json -model swin_t -results sqlite:///fou
 #################
 
 # Attack the RobustBench models using Square attack.
+# Square attack simulates black-box setting with no direct access to the model (under logs/robust).
+# APGD simulates black-box setting with whitebox access to a surrogate model (under logs/xfer).
 
 # Wong2020Fast
 python attack.py -log logs/robust/wong2020fast.json -model Wong2020Fast -rb -base -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 273 -iterations 1 -attack square
@@ -53,7 +55,7 @@ python attack.py -log logs/xfer/liu2023comprehensive_swin-l.json -model Liu2023C
 
 # Attack the baseline models defended using our CS method.
 # Square attack simulates black-box setting with no direct access to the model (under logs/cs).
-# AutoAttack simulates black-box setting with whitebox access to a surrogate model (under logs/xfer).
+# APGD simulates black-box setting with whitebox access to a surrogate model (under logs/xfer).
 
 # ResNet-50
 python attack.py -log logs/cs/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 273 -iterations 1 -attack square
