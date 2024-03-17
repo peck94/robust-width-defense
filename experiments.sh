@@ -71,4 +71,4 @@ python attack.py -log logs/xfer/vit_b_16.json -model vit_b_16 -results sqlite://
 
 # Swin-T
 python attack.py -log logs/cs/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 275 -iterations 1 -attack square
-python attack.py -log logs/xfer/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 275 -iterations 1 -attack apgd
+python attack.py -log logs/xfer/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 275 -iterations 1 -attack apgd
