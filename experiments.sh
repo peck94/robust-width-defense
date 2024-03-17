@@ -5,10 +5,10 @@
 ###################
 
 # ResNet-50
-python attack.py -log logs/base/resnet50.json -model resnet50 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 273 -iterations 1 -attack autoattack
+python attack.py -log logs/base/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 273 -iterations 1 -attack autoattack
 
 # Wide-Resnet101
-python attack.py -log logs/base/wide_resnet101.json -model wide_resnet101_2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 106 -iterations 1 -attack autoattack
+python attack.py -log logs/base/wide_resnet101.json -model wide_resnet101_2 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 106 -iterations 1 -attack autoattack
 
 # ViT-B-16
 python attack.py -log logs/base/vit_b_16.json -model vit_b_16 -results sqlite:///fourier.db -name vit_b_16 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -base -trial 52 -iterations 1 -attack autoattack
@@ -37,12 +37,12 @@ python attack.py -log logs/robust/liu2023comprehensive_swin-l.json -model Liu202
 ###################
 
 # ResNet-50
-python attack.py -log logs/cs/resnet50.json -model resnet50 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 273 -iterations 1 -attack autoattack
-python attack.py -log logs/xfer/resnet50.json -model resnet50 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 273 -iterations 1 -attack autoattack
+python attack.py -log logs/cs/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 273 -iterations 1 -attack autoattack
+python attack.py -log logs/xfer/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 273 -iterations 1 -attack autoattack
 
 # Wide-Resnet101
-python attack.py -log logs/cs/wide_resnet101.json -model wide_resnet101_2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 106 -iterations 1 -attack autoattack
-python attack.py -log logs/xfer/wide_resnet101.json -model wide_resnet101_2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 106 -iterations 1 -attack autoattack
+python attack.py -log logs/cs/wide_resnet101.json -model wide_resnet101_2 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 106 -iterations 1 -attack autoattack
+python attack.py -log logs/xfer/wide_resnet101.json -model wide_resnet101_2 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name wide_resnet101 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -trial 106 -iterations 1 -attack autoattack
 
 # ViT-B-16
 python attack.py -log logs/cs/vit_b_16.json -model vit_b_16 -results sqlite:///fourier.db -name vit_b_16 -eps 16 -norm Linf -data "$VSC_DATA_VO/ImageNet" -bs 16 -adapt -trial 52 -iterations 1 -attack autoattack
