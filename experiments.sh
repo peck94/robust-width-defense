@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # All attacks are Linf @ 16/255
+# Four settings:
+# base: attack baseline models using Square attack
+# robust: attack RobustBench models using Square attack
+# cs: attack baseline models defended using our CS method with Square attack (black-box setting, no surrogate)
+# xfer: attack baseline models defended using our CS method with AutoAttack adversarials transferred from unprotected baseline (black-box setting, surrogate)
 
 ###################
 # Baseline models #
