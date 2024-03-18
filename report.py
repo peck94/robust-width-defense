@@ -64,17 +64,18 @@ if __name__ == '__main__':
                 names.append(MAPPING[filename.split('/')[-1].split('.')[0]])
         
         X_axis = np.arange(len(orig_accs))
+        idx = np.argsort(adv_accs)[::-1]
   
-        plt.bar(X_axis - 0.2, orig_accs, 0.4, label='standard', yerr=orig_errs)
-        plt.bar(X_axis + 0.2, adv_accs, 0.4, label='robust', yerr=adv_errs)
+        plt.bar(X_axis - 0.2, np.array(orig_accs)[idx], 0.4, label='standard', yerr=orig_errs)
+        plt.bar(X_axis + 0.2, np.array(adv_accs)[idx], 0.4, label='robust', yerr=adv_errs)
         
-        plt.xticks(X_axis, names, rotation=45, ha='right')
+        plt.xticks(X_axis, np.array(names)[idx], rotation=45, ha='right')
         plt.xlabel('Model')
         plt.ylabel('Accuracy')
         plt.ylim(0, 1)
         plt.legend()
         plt.tight_layout()
-        plt.show()
+        plt.savefig(f'{args.log}/plot.pdf')
     else:
         orig_acc, adv_acc = Welford(), Welford()
         if Path(args.log).exists():
