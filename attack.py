@@ -100,7 +100,7 @@ def main(args):
             orig_acc.update_all(y_pred_orig.argmax(axis=1) == y_batch.numpy())
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
-            progbar.set_postfix({'orig_acc': orig_acc.values[0], 'adv_rec_acc': adv_acc.values[0]})
+            progbar.set_postfix({'standard': orig_acc.values[0], 'robust': adv_acc.values[0]})
             with open(args.log, 'w') as log:
                 orig_mean, orig_var = orig_acc.values
                 orig_err = 1.96 * np.sqrt(orig_var / orig_acc.count)
