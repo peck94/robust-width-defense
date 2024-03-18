@@ -36,6 +36,9 @@ if __name__ == '__main__':
 
     if args.plot:
         files = glob(f'{args.log}/*.json')
+        if len(files) == 0:
+            raise FileNotFoundError(args.log)
+
         names = []
         orig_accs, adv_accs = [], []
         orig_errs, adv_errs = [], []
