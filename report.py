@@ -14,6 +14,8 @@ from tabulate import tabulate
 
 from glob import glob
 
+from braceexpand import braceexpand
+
 MAPPING = {
     'wong2020fast': 'Wong et al. (2020)',
     'peng2023robust': 'Peng et al. (2023)',
@@ -28,14 +30,16 @@ MAPPING = {
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('log', type=str, help='log file')
+    parser.add_argument('log', type=str, help='location of log files')
     parser.add_argument('-latex', action='store_true', default=False, help='output LaTeX code')
     parser.add_argument('-plot', action='store_true', default=False, help='plot scores')
 
     args = parser.parse_args()
 
     if args.plot:
-        files = glob(f'{args.log}/*.json')
+        files = []
+        for d in braceexpand(args.log):
+            files += glob(f'{d}/*.json')
         if len(files) == 0:
             raise FileNotFoundError(args.log)
 
@@ -75,7 +79,7 @@ if __name__ == '__main__':
         plt.ylim(0, 1)
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f'{args.log}/plot.pdf')
+        plt.show()
     else:
         orig_acc, adv_acc = Welford(), Welford()
         if Path(args.log).exists():
