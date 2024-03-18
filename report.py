@@ -25,12 +25,13 @@ MAPPING = {
     'resnet50': 'ResNet50',
     'swin_t': 'Swin Transformer',
     'vit_b_16': 'Vision Transformer',
-    'wide_resnet101': 'WideResNet101'
+    'wide_resnet101': 'WRN-101-2'
 }
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('log', type=str, help='location of log files')
+    parser.add_argument('-out', type=str, help='save plot to this location')
     parser.add_argument('-latex', action='store_true', default=False, help='output LaTeX code')
     parser.add_argument('-plot', action='store_true', default=False, help='plot scores')
 
@@ -79,7 +80,11 @@ if __name__ == '__main__':
         plt.ylim(0, 1)
         plt.legend()
         plt.tight_layout()
-        plt.show()
+
+        if args.out:
+            plt.savefig(args.out)
+        else:
+            plt.show()
     else:
         orig_acc, adv_acc = Welford(), Welford()
         if Path(args.log).exists():
