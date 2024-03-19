@@ -24,7 +24,7 @@ from reconstruction import Reconstruction
 
 from tabulate import tabulate
 
-from utils import Welford
+from utils import Logger
 
 from pathlib import Path
 
@@ -73,19 +73,8 @@ def main(args):
     adversary = AutoAttack(args, model, defense)
 
     # load log
-    orig_acc = Welford()
-    adv_acc = Welford()
-    if Path(args.log).exists():
-        with open(args.log, 'r') as log:
-            data = json.load(log)
-            orig_acc.from_json(data['orig_acc'])
-            adv_acc.from_json(data['adv_acc'])
-        
-        if args.overwrite or (orig_acc.count < 1000 and adv_acc.count < 1000):
-            print(f'Continuing with {orig_acc.values[0]:.2%} and {adv_acc.values[0]:.2%}')
-        else:
-            print('Experiment already completed.')
-            quit()
+    logger = Logger(args.log)
+    orig_acc, adv_acc = logger.get_experiment(args.eps)
 
     # perform attacks
     progbar = tqdm(data_loader)
@@ -101,17 +90,7 @@ def main(args):
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
             progbar.set_postfix({'standard': orig_acc.values[0], 'robust': adv_acc.values[0]})
-            with open(args.log, 'w') as log:
-                orig_mean, orig_var = orig_acc.values
-                orig_err = 1.96 * np.sqrt(orig_var / orig_acc.count)
-
-                adv_mean, adv_var = adv_acc.values
-                adv_err = 1.96 * np.sqrt(adv_var / adv_acc.count)
-
-                print(json.dumps({
-                    'orig_acc': orig_acc.to_json(),
-                    'adv_acc': adv_acc.to_json()
-                }, sort_keys=True, indent=4), file=log)
+            logger.set_experiment(args.eps, orig_acc, adv_acc)
         except RuntimeError as e:
             print(e)
 

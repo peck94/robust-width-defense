@@ -4,6 +4,8 @@ import numpy as np
 
 import json
 
+from pathlib import Path
+
 class Welford:
     def __init__(self):
         self.mean = 0.0
@@ -38,6 +40,55 @@ class Welford:
         self.count = data['count']
         self.mean = data['mean']
         self.M2 = data['M2']
+
+class Logger:
+    def __init__(self, location):
+        self.location = Path(location)
+        self.data = []
+
+        if self.exists():
+            self.load()
+    
+    def exists(self):
+        return self.location.exists()
+    
+    def load(self):
+        with open(self.location, 'r') as f:
+            self.data = json.load(f)
+    
+    def save(self):
+        with open(self.location, 'w') as f:
+            json.dump(self.data, f, sort_keys=True, indent=4)
+    
+    def find_experiment(self, eps):
+        for i, item in enumerate(self.data):
+            if item['eps'] == eps:
+                return i
+        return -1
+    
+    def get_experiment(self, eps):
+        orig_acc, adv_acc = Welford(), Welford()
+        index = self.find_experiment(eps)
+        if index >= 0:
+            item = self.data[index]
+            orig_acc.from_json(item['orig_acc'])
+            adv_acc.from_json(item['adv_acc'])
+
+        return orig_acc, adv_acc
+    
+    def set_experiment(self, eps, orig_acc, adv_acc):
+        item = {
+                'eps': eps,
+                'orig_acc': orig_acc.to_json(),
+                'adv_acc': adv_acc.to_json()
+        }
+
+        index = self.find_experiment(eps)
+        if index >= 0:
+            self.data[index] = item
+        else:
+            self.data.append(item)
+        self.save()
 
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
