@@ -28,13 +28,16 @@ class Welford:
         return self.mean, self.M2 / (self.count - 1) if self.count > 1 else np.nan
     
     def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__)
+        return {
+            'mean': self.mean,
+            'count': self.count,
+            'M2': self.M2
+        }
     
     def from_json(self, data):
-        obj = json.loads(data)
-        self.count = obj['count']
-        self.mean = obj['mean']
-        self.M2 = obj['M2']
+        self.count = data['count']
+        self.mean = data['mean']
+        self.M2 = data['M2']
 
 def normalize(x):
     return (x - x.min()) / (x.max() - x.min())
