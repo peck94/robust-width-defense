@@ -60,15 +60,15 @@ class Logger:
         with open(self.location, 'w') as f:
             json.dump(self.data, f, sort_keys=True, indent=4)
     
-    def find_experiment(self, eps):
+    def find_experiment(self, args):
         for i, item in enumerate(self.data):
-            if item['eps'] == eps:
+            if item['eps'] == args.eps and item['norm'] == args.norm:
                 return i
         return -1
     
-    def get_experiment(self, eps):
+    def get_experiment(self, args):
         orig_acc, adv_acc = Welford(), Welford()
-        index = self.find_experiment(eps)
+        index = self.find_experiment(args)
         if index >= 0:
             item = self.data[index]
             orig_acc.from_json(item['orig_acc'])
@@ -76,14 +76,15 @@ class Logger:
 
         return orig_acc, adv_acc
     
-    def set_experiment(self, eps, orig_acc, adv_acc):
+    def set_experiment(self, args, orig_acc, adv_acc):
         item = {
-                'eps': eps,
+                'eps': args.eps,
+                'norm': args.norm,
                 'orig_acc': orig_acc.to_json(),
                 'adv_acc': adv_acc.to_json()
         }
 
-        index = self.find_experiment(eps)
+        index = self.find_experiment(args)
         if index >= 0:
             self.data[index] = item
         else:

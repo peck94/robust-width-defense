@@ -74,7 +74,7 @@ def main(args):
 
     # load log
     logger = Logger(args.log)
-    orig_acc, adv_acc = logger.get_experiment(args.eps)
+    orig_acc, adv_acc = logger.get_experiment(args)
 
     # perform attacks
     progbar = tqdm(data_loader)
@@ -90,7 +90,7 @@ def main(args):
             adv_acc.update_all(y_pred.argmax(axis=1) == y_batch.numpy())
 
             progbar.set_postfix({'standard': orig_acc.values[0], 'robust': adv_acc.values[0]})
-            logger.set_experiment(args.eps, orig_acc, adv_acc)
+            logger.set_experiment(args, orig_acc, adv_acc)
         except RuntimeError as e:
             print(e)
 
