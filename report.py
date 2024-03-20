@@ -42,9 +42,16 @@ if __name__ == '__main__':
         raise FileNotFoundError(args.log)
 
     # parse results
+    plt.clf()
+    plt.ylim(0, 1)
+
     results = {}
-    for filename in files:
+    X_axis = np.arange(len(files))
+    names = []
+    for i, filename in enumerate(files):
+        # load data
         model_name = filename.split('/')[-1].split('.')[0]
+        names.append(MAPPING[model_name])
         results[model_name] = {
             'eps': [],
             'orig_acc': [],
@@ -54,20 +61,18 @@ if __name__ == '__main__':
         with open(filename, 'r') as f:
             logger = Logger(filename)
         
+        # plot experiments
         experiments = logger.get_experiments(sort=True)
-        for experiment in experiments:
-            results[model_name]['eps'].append(experiment['eps'])
-            results[model_name]['orig_acc'].append(experiment['orig_acc'].mean)
-            results[model_name]['adv_acc'].append(experiment['adv_acc'].mean)
+        width = .1
+        start = -2*width
+
+        plt.bar(X_axis[i] + start, experiments[0]['orig_acc'].mean, width, yerr=experiments[0]['orig_acc'].sem, color='cyan')
+        for j, experiment in enumerate(experiments):
+            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiment['adv_acc'].mean, width, yerr=experiment['adv_acc'].sem, color='red')[0]
+            height = rect.get_height() + experiment['adv_acc'].sem
+            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiment['eps'], ha='center', va='bottom')
     
-    # plot results
-    plt.clf()
-    plt.ylim(0, 1)
-    for model_name in results:
-        label = MAPPING[model_name]
-        data = results[model_name]
-        plt.plot(data['eps'], data['adv_acc'], label=label, marker='o')
-    plt.legend()
+    plt.xticks(X_axis, names, rotation=45, ha='right')
     plt.tight_layout()
 
     # save or show

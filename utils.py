@@ -29,6 +29,11 @@ class Welford:
     def values(self):
         return self.mean, self.M2 / (self.count - 1) if self.count > 1 else np.nan
     
+    @property
+    def sem(self):
+        _, sigma2 = self.values
+        return 1.96 * np.sqrt(sigma2 / self.count)
+    
     def to_json(self):
         return {
             'mean': self.mean,
