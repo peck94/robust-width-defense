@@ -25,6 +25,10 @@ MAPPING = {
     'vit_b_16': 'Vision Transformer',
     'wide_resnet101': 'WRN-101-2'
 }
+ORDER = [
+    'wide_resnet50', 'resnet50', 'vit_b_16', 'swin_t',
+    'liu2023comprehensive_swin-l', 'debenedetti2022light_xcit-l12', 'peng2023robust', 'wong2020fast'
+]
 
 if __name__ == '__main__':
     # parse arguments
@@ -42,37 +46,38 @@ if __name__ == '__main__':
         raise FileNotFoundError(args.log)
 
     # parse results
-    plt.clf()
-    plt.ylim(0, 1)
-
     results = {}
-    X_axis = np.arange(len(files))
-    names = []
     for i, filename in enumerate(files):
         # load data
         model_name = filename.split('/')[-1].split('.')[0]
-        names.append(MAPPING[model_name])
-        results[model_name] = {
-            'eps': [],
-            'orig_acc': [],
-            'adv_acc': []
-        }
-
         with open(filename, 'r') as f:
             logger = Logger(filename)
         
-        # plot experiments
         experiments = logger.get_experiments(sort=True)
-        width = .1
+        results[model_name] = {
+            'eps': [item['eps'] for item in experiments],
+            'orig_acc': [item['orig_acc'] for item in experiments],
+            'adv_acc': [item['adv_acc'] for item in experiments]
+        }
+
+    # plot results
+    plt.clf()
+    plt.ylim(0, 1)
+
+    names = [model_name for model_name in ORDER if model_name in results]
+    X_axis = np.arange(len(names))
+    for i, model_name in enumerate(names):
+        experiments = results[model_name]
+        width = .2
         start = -2*width
 
-        plt.bar(X_axis[i] + start, experiments[0]['orig_acc'].mean, width, yerr=experiments[0]['orig_acc'].sem, color='cyan')
-        for j, experiment in enumerate(experiments):
-            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiment['adv_acc'].mean, width, yerr=experiment['adv_acc'].sem, color='red')[0]
-            height = rect.get_height() + experiment['adv_acc'].sem
-            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiment['eps'], ha='center', va='bottom')
+        plt.bar(X_axis[i] + start, experiments['orig_acc'][0].mean, width, yerr=experiments['orig_acc'][0].sem, color='cyan')
+        for j in range(len(experiments['eps'])):
+            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiments['adv_acc'][j].mean, width, yerr=experiments['adv_acc'][j].sem, color='red')[0]
+            height = rect.get_height() + experiments['adv_acc'][j].sem
+            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom', fontfamily='monospace', fontsize='small')
     
-    plt.xticks(X_axis, names, rotation=45, ha='right')
+    plt.xticks(X_axis, [MAPPING[name] for name in names], rotation=45, ha='right')
     plt.tight_layout()
 
     # save or show
