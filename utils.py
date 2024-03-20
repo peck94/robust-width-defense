@@ -40,6 +40,7 @@ class Welford:
         self.count = data['count']
         self.mean = data['mean']
         self.M2 = data['M2']
+        return self
 
 class Logger:
     def __init__(self, location):
@@ -75,6 +76,19 @@ class Logger:
             adv_acc.from_json(item['adv_acc'])
 
         return orig_acc, adv_acc
+    
+    def get_experiments(self, sort=False):
+        experiments = []
+        for item in self.data:
+            experiments.append({
+                'eps': item['eps'],
+                'norm': item['norm'],
+                'orig_acc': Welford().from_json(item['orig_acc']),
+                'adv_acc': Welford().from_json(item['adv_acc'])
+            })
+        if sort:
+            experiments = sorted(experiments, key=lambda item: item['eps'])
+        return experiments
     
     def set_experiment(self, args, orig_acc, adv_acc):
         item = {
