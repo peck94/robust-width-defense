@@ -73,7 +73,8 @@ if __name__ == '__main__':
         for j in range(len(experiments['eps'])):
             rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiments['adv_acc'][j].mean, width, yerr=experiments['adv_acc'][j].sem, color='red')[0]
             height = rect.get_height() + experiments['adv_acc'][j].sem
-            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom', fontfamily='monospace', fontsize='small')
+            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom',
+                     fontfamily='monospace', fontsize='x-small', fontweight='bold')
     
     plt.xticks(X_axis, [MAPPING[name] for name in names], rotation=45, ha='right')
 
