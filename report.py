@@ -1,14 +1,12 @@
 import argparse
 
-import json
-
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-from utils import Logger
+import matplotlib.patches as mpatches
 
-from pathlib import Path
+from utils import Logger
 
 from glob import glob
 
@@ -78,6 +76,13 @@ if __name__ == '__main__':
             plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom', fontfamily='monospace', fontsize='small')
     
     plt.xticks(X_axis, [MAPPING[name] for name in names], rotation=45, ha='right')
+
+    cyan_patch = mpatches.Patch(color='cyan', label='standard')
+    red_patch = mpatches.Patch(color='red', label='robust')
+    plt.legend(handles=[cyan_patch, red_patch])
+
+    plt.xlabel('Model')
+    plt.ylabel('Accuracy')
     plt.tight_layout()
 
     # save or show
