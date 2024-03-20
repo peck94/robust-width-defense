@@ -26,7 +26,7 @@ MAPPING = {
     'wide_resnet101': 'WRN-101-2'
 }
 ORDER = [
-    'wide_resnet50', 'resnet50', 'vit_b_16', 'swin_t',
+    'wide_resnet101', 'resnet50', 'vit_b_16', 'swin_t',
     'liu2023comprehensive_swin-l', 'debenedetti2022light_xcit-l12', 'peng2023robust', 'wong2020fast'
 ]
 
