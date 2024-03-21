@@ -10,8 +10,6 @@ from utils import Logger
 
 from glob import glob
 
-from braceexpand import braceexpand
-
 MAPPING = {
     'wong2020fast': 'Wong et al. (2020)',
     'peng2023robust': 'Peng et al. (2023)',
@@ -31,14 +29,14 @@ ORDER = [
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('log', type=str, help='location of log files')
+    parser.add_argument('log', type=str, help='location of log files', nargs='+')
     parser.add_argument('-out', type=str, help='save plot to this location')
 
     args = parser.parse_args()
 
     # load data files
     files = []
-    for d in braceexpand(args.log):
+    for d in args.log:
         files += glob(f'{d}/*.json')
     if len(files) == 0:
         raise FileNotFoundError(args.log)
