@@ -1,20 +1,14 @@
 import argparse
 
-import json
-
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-from utils import Welford
+import matplotlib.patches as mpatches
 
-from pathlib import Path
-
-from tabulate import tabulate
+from utils import Logger
 
 from glob import glob
-
-from braceexpand import braceexpand
 
 MAPPING = {
     'wong2020fast': 'Wong et al. (2020)',
@@ -27,84 +21,71 @@ MAPPING = {
     'vit_b_16': 'Vision Transformer',
     'wide_resnet101': 'WRN-101-2'
 }
+ORDER = [
+    'wide_resnet101', 'resnet50', 'vit_b_16', 'swin_t',
+    'liu2023comprehensive_swin-l', 'debenedetti2022light_xcit-l12', 'peng2023robust', 'wong2020fast'
+]
 
 if __name__ == '__main__':
+    # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('log', type=str, help='location of log files')
+    parser.add_argument('log', type=str, help='location of log files', nargs='+')
     parser.add_argument('-out', type=str, help='save plot to this location')
-    parser.add_argument('-latex', action='store_true', default=False, help='output LaTeX code')
-    parser.add_argument('-plot', action='store_true', default=False, help='plot scores')
 
     args = parser.parse_args()
 
-    if args.plot:
-        files = []
-        for d in braceexpand(args.log):
-            files += glob(f'{d}/*.json')
-        if len(files) == 0:
-            raise FileNotFoundError(args.log)
+    # load data files
+    files = []
+    for d in args.log:
+        files += glob(f'{d}/*.json')
+    if len(files) == 0:
+        raise FileNotFoundError(args.log)
 
-        names = []
-        orig_accs, adv_accs = [], []
-        orig_errs, adv_errs = [], []
-        for filename in files:
-            with open(filename, 'r') as f:
-                data = json.load(f)
-                w1, w2 = Welford(), Welford()
-                w1.from_json(data['orig_acc'])
-                w2.from_json(data['adv_acc'])
-
-                orig_mean, orig_var = w1.values
-                orig_err = 1.96 * np.sqrt(orig_var / w1.count)
-
-                adv_mean, adv_var = w2.values
-                adv_err = 1.96 * np.sqrt(adv_var / w2.count)
-
-                orig_accs.append(orig_mean)
-                orig_errs.append(orig_err)
-
-                adv_accs.append(adv_mean)
-                adv_errs.append(adv_err)
-
-                names.append(MAPPING[filename.split('/')[-1].split('.')[0]])
+    # parse results
+    results = {}
+    for i, filename in enumerate(files):
+        # load data
+        model_name = filename.split('/')[-1].split('.')[0]
+        with open(filename, 'r') as f:
+            logger = Logger(filename)
         
-        X_axis = np.arange(len(orig_accs))
-        idx = np.argsort(adv_accs)[::-1]
-  
-        plt.bar(X_axis - 0.2, np.array(orig_accs)[idx], 0.4, label='standard', yerr=orig_errs)
-        plt.bar(X_axis + 0.2, np.array(adv_accs)[idx], 0.4, label='robust', yerr=adv_errs)
-        
-        plt.xticks(X_axis, np.array(names)[idx], rotation=45, ha='right')
-        plt.xlabel('Model')
-        plt.ylabel('Accuracy')
-        plt.ylim(0, 1)
-        plt.legend()
-        plt.tight_layout()
+        experiments = logger.get_experiments(sort=True)
+        results[model_name] = {
+            'eps': [item['eps'] for item in experiments],
+            'orig_acc': [item['orig_acc'] for item in experiments],
+            'adv_acc': [item['adv_acc'] for item in experiments]
+        }
 
-        if args.out:
-            plt.savefig(args.out)
-        else:
-            plt.show()
+    # plot results
+    plt.clf()
+    plt.ylim(0, 1)
+
+    names = [model_name for model_name in ORDER if model_name in results]
+    X_axis = np.arange(len(names))
+    for i, model_name in enumerate(names):
+        experiments = results[model_name]
+        width = .2
+        start = -2*width
+
+        plt.bar(X_axis[i] + start, experiments['orig_acc'][0].mean, width, yerr=experiments['orig_acc'][0].sem, color='cyan')
+        for j in range(len(experiments['eps'])):
+            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiments['adv_acc'][j].mean, width, yerr=experiments['adv_acc'][j].sem, color='red')[0]
+            height = rect.get_height() + experiments['adv_acc'][j].sem
+            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom',
+                     fontfamily='monospace', fontsize='x-small', fontweight='bold')
+    
+    plt.xticks(X_axis, [MAPPING[name] for name in names], rotation=45, ha='right')
+
+    cyan_patch = mpatches.Patch(color='cyan', label='standard')
+    red_patch = mpatches.Patch(color='red', label='robust')
+    plt.legend(handles=[cyan_patch, red_patch])
+
+    plt.xlabel('Model')
+    plt.ylabel('Accuracy')
+    plt.tight_layout()
+
+    # save or show
+    if args.out:
+        plt.savefig(args.out)
     else:
-        orig_acc, adv_acc = Welford(), Welford()
-        if Path(args.log).exists():
-            with open(args.log, 'r') as log:
-                data = json.load(log)
-                orig_acc.from_json(data['orig_acc'])
-                adv_acc.from_json(data['adv_acc'])
-        else:
-            raise FileNotFoundError(args.log)
-        
-        orig_mean, orig_var = orig_acc.values
-        orig_err = 1.96 * np.sqrt(orig_var / orig_acc.count)
-
-        adv_mean, adv_var = adv_acc.values
-        adv_err = 1.96 * np.sqrt(adv_var / adv_acc.count)
-
-        if args.latex:
-            print(f'{100*orig_mean:.2f}\\% $\\pm$ {100*orig_err:.2f}\\% & {100*adv_mean:.2f}\\% $\\pm$ {100*adv_err:.2f}\\%')
-        else:
-            print(tabulate([
-                ['Standard', f'{orig_mean:.2%}', f'{orig_err:.2%}'],
-                ['Robust', f'{adv_mean:.2%}', f'{adv_err:.2%}']
-            ], headers=['Setting', 'Accuracy', 'Error']))
+        plt.show()
