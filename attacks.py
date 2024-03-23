@@ -25,7 +25,6 @@ class AutoAttack(Attack):
 
         if args.attack == 'square':
             self.adversary = AA(target, norm=args.norm, eps=args.eps/255, version='custom', attacks_to_run=['square'])
-            self.adversary.square.n_queries = 500
         elif args.attack == 'apgd':
             self.adversary = AA(target, norm=args.norm, eps=args.eps/255, version='custom', attacks_to_run=['apgd-ce'])
     
