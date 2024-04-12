@@ -3,9 +3,8 @@
 data=${1:-"$VSC_DATA_VO/ImageNet"}
 eps=${2:-16}
 
-# All attacks are Linf @ 16/255
-# Four settings:
-# base: attack baseline models using Square attack
+# All attacks are Linf
+# Three settings:
 # robust: attack RobustBench models using Square attack
 # cs: attack baseline models defended using our CS method with Square attack (black-box setting, no surrogate)
 # xfer: attack models with APGD adversarials transferred from unprotected baseline (black-box setting, surrogate)
@@ -75,3 +74,10 @@ python attack.py -log logs/xfer/vit_b_16.json -model vit_b_16 -results sqlite://
 # Swin-T
 python attack.py -log logs/cs/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps "$eps" -norm Linf -data "$data" -bs 16 -adapt -trial 275 -iterations 1 -attack square
 python attack.py -log logs/xfer/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps "$eps" -norm Linf -data "$data" -bs 16 -trial 275 -iterations 1 -attack apgd
+
+###################
+# Plot results    #
+###################
+
+python report.py -out plots/apgd.pdf logs/xfer
+python report.py -out plots/square.pdf logs/{cs,robust}
