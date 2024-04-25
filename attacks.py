@@ -27,6 +27,8 @@ class AutoAttack(Attack):
             self.adversary = AA(target, norm=args.norm, eps=args.eps/255, version='custom', attacks_to_run=['square'])
         elif args.attack == 'apgd':
             self.adversary = AA(target, norm=args.norm, eps=args.eps/255, version='custom', attacks_to_run=['apgd-ce'])
+        elif args.attack == 'full':
+            self.adversary = AA(target, norm=args.norm, eps=args.eps/255, version='rand')
     
     def generate(self, x_batch, y_batch):
         return self.adversary.run_standard_evaluation(x_batch.detach().cpu(), y_batch.detach().cpu(), bs=self.args.bs)
