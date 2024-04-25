@@ -1,12 +1,8 @@
 import optuna
 
-import json
-
 import numpy as np
 
 import argparse
-
-import warnings
 
 import torch
 import torchvision
@@ -26,15 +22,7 @@ from tabulate import tabulate
 
 from utils import Logger
 
-from pathlib import Path
-
 def main(args):
-    # perform checks
-    if args.attack == 'simba' and not args.softmax:
-        warnings.warn('This attack expects probabilities. Consider passing the -softmax flag.', RuntimeWarning)
-    if args.attack == 'autoattack' and args.softmax:
-        warnings.warn('This attack expects logits. Consider removing the -softmax flag.', RuntimeWarning)
-
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(f'Device: {device}')
@@ -68,7 +56,7 @@ def main(args):
     if args.base:
         defense = model
     else:
-        defense = Smoother(model, reconstructor, args.iterations, verbose=False, softmax=args.softmax).to(device)
+        defense = Smoother(model, reconstructor).to(device)
 
     adversary = AutoAttack(args, model, defense)
 
@@ -121,10 +109,8 @@ if __name__ == '__main__':
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
-    parser.add_argument('-iterations', type=int, default=10, help='number of iterations of smoothing')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-attack', choices=['square', 'apgd', 'full'], help='adversarial attack to run')
-    parser.add_argument('-softmax', action='store_true', default=False, help='predict softmax probabilities')
     parser.add_argument('-log', type=str, default='output.json', help='output log')
     parser.add_argument('-base', action='store_true', default=False, help='do not apply any defense')
     parser.add_argument('-overwrite', action='store_true', default=False, help='overwrite completed experiments')

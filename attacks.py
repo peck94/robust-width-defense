@@ -1,10 +1,4 @@
-import torch
-import torch.nn.functional as F
-
 from autoattack import AutoAttack as AA
-
-from art.attacks.evasion import SimBA as SA
-from art.estimators.classification import PyTorchClassifier
 
 class Attack:
     def __init__(self, args, model, defense):
