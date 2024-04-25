@@ -10,6 +10,8 @@ from utils import Logger
 
 from glob import glob
 
+from tabulate import tabulate
+
 MAPPING = {
     'wong2020fast': 'Wong et al. (2020)',
     'peng2023robust': 'Peng et al. (2023)',
@@ -55,6 +57,13 @@ if __name__ == '__main__':
             'orig_acc': [item['orig_acc'] for item in experiments],
             'adv_acc': [item['adv_acc'] for item in experiments]
         }
+    
+    # show table
+    print(tabulate([
+        [MAPPING[model_name], f"{results[model_name]['orig_acc'][0].mean:.2%} +- {results[model_name]['orig_acc'][0].sem:.2%}"] + \
+        [f"{results[model_name]['adv_acc'][i].mean:.2%} +- {results[model_name]['adv_acc'][i].sem:.2%}" for i in range(len(results[model_name]['adv_acc']))]
+        for model_name in results
+    ], headers=['Model', 'Standard', 'eps = 8/255', 'eps = 16/255', 'eps = 32/255']))
 
     # plot results
     plt.clf()
