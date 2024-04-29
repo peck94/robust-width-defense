@@ -75,6 +75,22 @@ python attack.py -log logs/xfer/vit_b_16.json -model vit_b_16 -results sqlite://
 python attack.py -log logs/cs/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps "$eps" -norm Linf -data "$data" -bs 16 -adapt -trial 275 -attack square
 python attack.py -log logs/xfer/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps "$eps" -norm Linf -data "$data" -bs 16 -trial 275 -attack apgd
 
+####################
+# Adaptive attacks #
+####################
+
+# ResNet-50
+python attack.py -log logs/adapt/resnet50.json -model resnet50 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name resnet50 -eps "$eps" -norm Linf -data "$data" -bs 4 -adapt -trial 273 -attack full
+
+# Wide-Resnet101
+python attack.py -log logs/adapt/wide_resnet101.json -model wide_resnet101_2 -weights IMAGENET1K_V2 -results sqlite:///fourier.db -name wide_resnet101 -eps "$eps" -norm Linf -data "$data" -bs 4 -adapt -trial 106 -attack full
+
+# ViT-B-16
+python attack.py -log logs/adapt/vit_b_16.json -model vit_b_16 -results sqlite:///fourier.db -name vit_b_16 -eps "$eps" -norm Linf -data "$data" -bs 4 -adapt -trial 52 -attack full
+
+# Swin-T
+python attack.py -log logs/adapt/swin_t.json -model swin_t -results sqlite:///fourier.db -name swin_t -eps "$eps" -norm Linf -data "$data" -bs 4 -adapt -trial 275 -attack full
+
 ###################
 # Plot results    #
 ###################
