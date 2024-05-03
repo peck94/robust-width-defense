@@ -4,11 +4,11 @@ data=${1:-"$VSC_DATA_VO/ImageNet"}
 eps=${2:-16}
 norm=${3:-"Linf"}
 
-# All attacks are Linf
-# Three settings:
+# Four settings:
 # robust: attack RobustBench models using Square attack
-# cs: attack baseline models defended using our CS method with Square attack (black-box setting, no surrogate)
-# xfer: attack models with APGD adversarials transferred from unprotected baseline (black-box setting, surrogate)
+# cs    : attack baseline models defended using our CS method with Square attack (black-box setting, no surrogate)
+# xfer  : attack models with APGD adversarials transferred from unprotected baseline (black-box setting, surrogate)
+# adapt : attack CS models with adaptive random AutoAttack
 
 ###################
 # Baseline models #
