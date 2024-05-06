@@ -1,5 +1,7 @@
 import numpy as np
 
+import robustbench as rb
+
 import argparse
 
 import optuna
@@ -32,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
     parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack evaluation')
+    parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
 
     args = parser.parse_args()
 
@@ -40,7 +43,10 @@ if __name__ == '__main__':
     print(f'Device: {device}')
 
     # load model
-    model = torchvision.models.get_model(args.model, weights=args.weights).to(device)
+    if args.rb:
+        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm).to(device)
+    else:
+        model = torchvision.models.get_model(args.model, weights=args.weights).to(device)
     model.eval()
     classifier =  PyTorchClassifier(
         model=model,
@@ -51,13 +57,14 @@ if __name__ == '__main__':
     )
 
     # load data
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalize = []
+    if not args.rb:
+        normalize = [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
                                               transform=transforms.Compose([
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
-                                                  transforms.ToTensor(),
-                                                  normalize]))
+                                                  transforms.ToTensor()] + normalize))
     data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
 
     # define the objective function
