@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
     parser.add_argument('-trials', type=int, default=1000, help='number of trials')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
+    parser.add_argument('-norm', type=str, choices=['Linf', 'L2'], default='Linf', help='perturbation norm')
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         total = 0
         attack = AutoProjectedGradientDescent(
             estimator=smoothed if args.adapt else classifier,
-            norm=np.inf,
+            norm=np.inf if args.norm == 'Linf' else 2,
             eps=args.eps/255,
             max_iter=10,
             nb_random_init=5)
