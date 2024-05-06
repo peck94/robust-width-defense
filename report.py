@@ -45,6 +45,7 @@ if __name__ == '__main__':
 
     # parse results
     results = {}
+    epses = set()
     for i, filename in enumerate(files):
         # load data
         model_name = filename.split('/')[-1].split('.')[0]
@@ -57,13 +58,16 @@ if __name__ == '__main__':
             'orig_acc': [item['orig_acc'] for item in experiments],
             'adv_acc': [item['adv_acc'] for item in experiments]
         }
+        for item in experiments:
+            epses.add(item['eps'])
+    epses = sorted(list(epses))
     
     # show table
     print(tabulate([
         [MAPPING[model_name], f"{results[model_name]['orig_acc'][0].mean:.2%} +- {results[model_name]['orig_acc'][0].sem:.2%}"] + \
         [f"{results[model_name]['adv_acc'][i].mean:.2%} +- {results[model_name]['adv_acc'][i].sem:.2%}" for i in range(len(results[model_name]['adv_acc']))]
         for model_name in results
-    ], headers=['Model', 'Standard', 'eps = 8/255', 'eps = 16/255', 'eps = 32/255']))
+    ], headers=['Model', 'Standard'] + [f'eps = {eps}/255' for eps in epses]))
 
     # plot results
     plt.clf()
