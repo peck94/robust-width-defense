@@ -96,5 +96,5 @@ python attack.py -log logs/adapt/swin_t.json -model swin_t -results sqlite:///fo
 # Plot results    #
 ###################
 
-python report.py -out plots/apgd.pdf logs/xfer
-python report.py -out plots/square.pdf logs/{cs,robust}
+python report.py -out "plots/$norm_apgd.pdf" logs/xfer
+python report.py -out "plots/$norm_square.pdf" logs/{cs,robust}
