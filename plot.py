@@ -23,8 +23,10 @@ def plot_info(trial, xt, yt):
     params = trial.params
     if 'levels' in params:
         levels = params['levels']
-    else:
+    elif 'scales' in params:
         levels = params['scales']
+    else:
+        levels = 'NA'
     method = params['method']
     if params['method'] == 'wavelet':
         method = f'{params["method"]} ({params["wavelet"]})'
@@ -76,7 +78,7 @@ if __name__ == '__main__':
     plt.ylim((0, 1))
 
     plot_info(study.best_trials[idx[0]], .1, .9)
-    plot_info(study.best_trials[idx[len(study.best_trials) // 3]], .6, .9)
+    plot_info(study.best_trials[idx[len(study.best_trials) // 3]], .9, .9)
     plot_info(study.best_trials[idx[len(study.best_trials) // 2]], .4, .1)
     plot_info(study.best_trials[idx[-1]], .8, .5)
 
