@@ -82,15 +82,16 @@ class Logger:
 
         return orig_acc, adv_acc
     
-    def get_experiments(self, sort=False):
+    def get_experiments(self, sort=False, norm='Linf'):
         experiments = []
         for item in self.data:
-            experiments.append({
-                'eps': item['eps'],
-                'norm': item['norm'],
-                'orig_acc': Welford().from_json(item['orig_acc']),
-                'adv_acc': Welford().from_json(item['adv_acc'])
-            })
+            if item['norm'] == norm:
+                experiments.append({
+                    'eps': item['eps'],
+                    'norm': item['norm'],
+                    'orig_acc': Welford().from_json(item['orig_acc']),
+                    'adv_acc': Welford().from_json(item['adv_acc'])
+                })
         if sort:
             experiments = sorted(experiments, key=lambda item: item['eps'])
         return experiments

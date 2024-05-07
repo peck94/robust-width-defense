@@ -2,6 +2,8 @@ import argparse
 
 import numpy as np
 
+import pandas as pd
+
 import matplotlib.pyplot as plt
 
 import matplotlib.patches as mpatches
@@ -9,8 +11,6 @@ import matplotlib.patches as mpatches
 from utils import Logger
 
 from glob import glob
-
-from tabulate import tabulate
 
 MAPPING = {
     'wong2020fast': 'Wong et al. (2020)',
@@ -32,6 +32,7 @@ if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('log', type=str, help='location of log files', nargs='+')
+    parser.add_argument('-norm', type=str, choices=['Linf', 'L2'], default='Linf', help='norm to report')
     parser.add_argument('-out', type=str, help='save plot to this location')
 
     args = parser.parse_args()
@@ -44,43 +45,58 @@ if __name__ == '__main__':
         raise FileNotFoundError(args.log)
 
     # parse results
-    results = {}
+    epses = set()
     for i, filename in enumerate(files):
         # load data
         model_name = filename.split('/')[-1].split('.')[0]
         with open(filename, 'r') as f:
             logger = Logger(filename)
         
-        experiments = logger.get_experiments(sort=True)
-        results[model_name] = {
-            'eps': [item['eps'] for item in experiments],
-            'orig_acc': [item['orig_acc'] for item in experiments],
-            'adv_acc': [item['adv_acc'] for item in experiments]
-        }
+        experiments = logger.get_experiments(sort=True, norm=args.norm)
+        for item in experiments:
+            epses.add(item['eps'])
+    epses = sorted(list(epses))
+
+    results = {
+        'Standard': []
+    }
+    raw_data = {}
+    for eps in epses:
+        results[f'eps = {eps}'] = []
+    model_names = []
+    for i, filename in enumerate(files):
+        # load data
+        model_name = filename.split('/')[-1].split('.')[0]
+        if model_name in MAPPING:
+            model_names.append(MAPPING[model_name])
+            with open(filename, 'r') as f:
+                logger = Logger(filename)
+            
+            experiments = logger.get_experiments(sort=True, norm=args.norm)
+            raw_data[model_name] = experiments
+            results['Standard'].append(f"{experiments[0]['orig_acc'].mean:.2%} +- {experiments[0]['orig_acc'].sem:.2%}")
+            for item in experiments:
+                results[f"eps = {item['eps']}"].append(f"{item['adv_acc'].mean:.2%} +- {item['adv_acc'].sem:.2%}")
     
     # show table
-    print(tabulate([
-        [MAPPING[model_name], f"{results[model_name]['orig_acc'][0].mean:.2%} +- {results[model_name]['orig_acc'][0].sem:.2%}"] + \
-        [f"{results[model_name]['adv_acc'][i].mean:.2%} +- {results[model_name]['adv_acc'][i].sem:.2%}" for i in range(len(results[model_name]['adv_acc']))]
-        for model_name in results
-    ], headers=['Model', 'Standard', 'eps = 8/255', 'eps = 16/255', 'eps = 32/255']))
+    print(pd.DataFrame(results, index=model_names))
 
     # plot results
     plt.clf()
     plt.ylim(0, 1)
 
-    names = [model_name for model_name in ORDER if model_name in results]
+    names = [model_name for model_name in ORDER if model_name in raw_data]
     X_axis = np.arange(len(names))
     for i, model_name in enumerate(names):
-        experiments = results[model_name]
+        experiments = raw_data[model_name]
         width = .2
         start = -2*width
 
-        plt.bar(X_axis[i] + start, experiments['orig_acc'][0].mean, width, yerr=experiments['orig_acc'][0].sem, color='cyan')
-        for j in range(len(experiments['eps'])):
-            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiments['adv_acc'][j].mean, width, yerr=experiments['adv_acc'][j].sem, color='red')[0]
-            height = rect.get_height() + experiments['adv_acc'][j].sem
-            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments['eps'][j], ha='center', va='bottom',
+        plt.bar(X_axis[i] + start, experiments[0]['orig_acc'].mean, width, yerr=experiments[0]['orig_acc'].sem, color='cyan')
+        for j in range(len(experiments)):
+            rect = plt.bar(X_axis[i] + start + (j + 1)*width, experiments[j]['adv_acc'].mean, width, yerr=experiments[j]['adv_acc'].sem, color='red')[0]
+            height = rect.get_height() + experiments[j]['adv_acc'].sem
+            plt.text(rect.get_x() + rect.get_width() / 2.0, height, experiments[j]['eps'], ha='center', va='bottom',
                      fontfamily='monospace', fontsize='x-small', fontweight='bold')
     
     plt.xticks(X_axis, [MAPPING[name] for name in names], rotation=45, ha='right')
