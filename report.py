@@ -43,6 +43,7 @@ if __name__ == '__main__':
         files += glob(f'{d}/*.json')
     if len(files) == 0:
         raise FileNotFoundError(args.log)
+    files = [filename for filename in files if filename.split('/')[-1].split('.')[0] in MAPPING]
 
     # parse results
     epses = set()
@@ -62,21 +63,20 @@ if __name__ == '__main__':
     }
     raw_data = {}
     for eps in epses:
-        results[f'eps = {eps}'] = []
+        results[f'eps = {eps}'] = [pd.NA for _ in files]
     model_names = []
     for i, filename in enumerate(files):
         # load data
         model_name = filename.split('/')[-1].split('.')[0]
-        if model_name in MAPPING:
-            model_names.append(MAPPING[model_name])
-            with open(filename, 'r') as f:
-                logger = Logger(filename)
-            
-            experiments = logger.get_experiments(sort=True, norm=args.norm)
-            raw_data[model_name] = experiments
-            results['Standard'].append(f"{experiments[0]['orig_acc'].mean:.2%} +- {experiments[0]['orig_acc'].sem:.2%}")
-            for item in experiments:
-                results[f"eps = {item['eps']}"].append(f"{item['adv_acc'].mean:.2%} +- {item['adv_acc'].sem:.2%}")
+        model_names.append(MAPPING[model_name])
+        with open(filename, 'r') as f:
+            logger = Logger(filename)
+        
+        experiments = logger.get_experiments(sort=True, norm=args.norm)
+        raw_data[model_name] = experiments
+        results['Standard'].append(f"{experiments[0]['orig_acc'].mean:.2%} +- {experiments[0]['orig_acc'].sem:.2%}")
+        for item in experiments:
+            results[f"eps = {item['eps']}"][i] = f"{item['adv_acc'].mean:.2%} +- {item['adv_acc'].sem:.2%}"
     
     # show table
     print(pd.DataFrame(results, index=model_names))
