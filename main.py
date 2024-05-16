@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('-version', type=str, default='standard', help='AutoAttack version')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-max-batches', type=int, default=64, help='maximum number of batches')
-    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-data', type=str, help='ImageNet path')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack evaluation')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
 

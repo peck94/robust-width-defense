@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-name', type=str, default='cs-test', help='study name')
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
-    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-data', type=str, help='ImageNet path')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
 

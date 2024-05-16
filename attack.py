@@ -105,7 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('-results', type=str, default='sqlite:///results.db', help='results database')
     parser.add_argument('-eps', type=int, default=4, help='perturbation budget')
     parser.add_argument('-norm', type=str, default='Linf', help='threat model')
-    parser.add_argument('-data', type=str, default='/scratch/jpeck/imagenet', help='ImageNet path')
+    parser.add_argument('-data', type=str, help='ImageNet path')
     parser.add_argument('-bs', type=int, default=16, help='batch size')
     parser.add_argument('-adapt', action='store_true', default=False, help='perform adaptive attack')
     parser.add_argument('-trial', type=int, default=0, help='Optuna trial to load')
