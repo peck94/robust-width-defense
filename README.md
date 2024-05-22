@@ -4,7 +4,7 @@ This repository contains the code for our paper, *Robust width adversarial defen
 
 ## Setup
 
-Most of the dependencies are described in the `environment.yml` file. You can setup this environment using Anaconda:
+All dependencies are described in the `environment.yml` file. You can setup this environment using Anaconda:
 
 ```console
 conda env create -f environment.yml
