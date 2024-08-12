@@ -97,13 +97,13 @@ python attack.py -log logs/adapt/swin_t.json -model swin_t -results sqlite:///fo
 ################
 
 # Wong2020Fast
-python attack.py -log logs/cs/wong2020fast.json -model Wong2020Fast -rb -results sqlite:///fourier.db -name wong2020fast -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 0 -attack apgd
+python attack.py -log logs/cs/wong2020fast.json -model Wong2020Fast -rb -results sqlite:///fourier.db -name wong2020fast -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 580 -attack apgd
 
 # Peng2023Robust
-python attack.py -log logs/cs/peng2023robust.json -model Peng2023Robust -rb -results sqlite:///fourier.db -name peng2023robust -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 0 -attack apgd
+python attack.py -log logs/cs/peng2023robust.json -model Peng2023Robust -rb -results sqlite:///fourier.db -name peng2023robust -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 276 -attack apgd
 
 # Debenedetti2022Light_XCiT-L12
-python attack.py -log logs/cs/debenedetti2022light_xcit-l12.json -model Debenedetti2022Light_XCiT-L12 -rb -results sqlite:///fourier.db -name debenedetti2022light_xcit-l12 -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 0 -attack apgd
+python attack.py -log logs/cs/debenedetti2022light_xcit-l12.json -model Debenedetti2022Light_XCiT-L12 -rb -results sqlite:///fourier.db -name debenedetti2022light_xcit-l12 -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 977 -attack apgd
 
 # Liu2023Comprehensive_Swin-L
 python attack.py -log logs/cs/liu2023comprehensive_swin-l.json -model Liu2023Comprehensive_Swin-L -rb -results sqlite:///fourier.db -name liu2023comprehensive_swin-l -eps "$eps" -norm "$norm" -data "$data" -bs 16 -trial 726 -attack apgd
