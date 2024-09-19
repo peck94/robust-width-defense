@@ -1,6 +1,6 @@
 # Robust width adversarial defense
 
-This repository contains the code for our paper, *Robust width adversarial defense*.
+This repository contains the code for our paper, [Robust width adversarial defense](https://arxiv.org/abs/2405.15971).
 
 ## Setup
 
