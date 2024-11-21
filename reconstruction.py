@@ -94,22 +94,35 @@ class Reconstruction:
             return normalize(self.method.backward(coeffs))
 
     @ensure_built
-    def certify(self, originals, lam=.1, tol=1e-4):
-        orig = self.method.forward(originals)
-        d = self.method.forward(originals)
-        b = self.method.forward(torch.zeros_like(originals).to(originals.device))
-        u = self.method.forward(torch.zeros_like(originals).to(originals.device))
+    def certify(self, originals, lam=.1, tol=1e-4, samples=1000):
+        avg_result = np.zeros(originals.shape[0])
+        for _ in range(samples):
+            # build the mask for the sensing operator
+            mask = torch.bernoulli(torch.ones_like(originals) * self.q)
+            phi = lambda x: torch.fft.fft2(x) * mask
+            psi = lambda x: torch.real(torch.fft.ifft2(x)).float()
 
-        old_result, new_result = 0, np.inf
-        while abs(old_result - new_result) > tol:
-            u = d - b - orig
-            u.soft_thresh(lam)
-            u = u + orig
+            # process the original samples
+            data = psi(phi(originals))
 
-            d = u + b
-            d.soft_thresh(lam)
+            # compute the sparsity defect
+            orig = self.method.forward(data)
+            d = self.method.forward(data)
+            b = self.method.forward(torch.zeros_like(originals).to(originals.device))
+            u = self.method.forward(torch.zeros_like(originals).to(originals.device))
 
-            b = b + u - d
-            old_result, new_result = new_result, torch.sum((orig - d).norm())
+            old_result, new_result = 0, np.inf
+            while abs(old_result - new_result) > tol:
+                u = d - b - orig
+                u.soft_thresh(lam)
+                u = u + orig
+
+                d = u + b
+                d.soft_thresh(lam)
+
+                b = b + u - d
+                old_result, new_result = new_result, torch.sum((orig - d).norm())
+            
+            avg_result += new_result / samples
         
-        return new_result
+        return avg_result
