@@ -57,32 +57,26 @@ if __name__ == '__main__':
     else:
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device).eval()
 
-    # determine initial robustness
+    # determine initial robustness and expected sparsity defect
     adversary = AutoAttack(model, norm=args.norm, version='custom')
     adversary.attacks_to_run = ['fab']
     taus = []
-    for images, labels in tqdm(data_loader):
+    defects = []
+    progbar = tqdm(data_loader)
+    for images, labels in progbar:
         x_adv = adversary.run_standard_evaluation(images, labels, bs=args.bs)
         taus.append(np.sqrt(np.square(images - x_adv).sum(axis=[1, 2, 3])))
+        defects.append(reconstructor.certify(images.to(device)).numpy())
     taus = np.concatenate(taus)
+    defects = np.concatenate(defects)
     print(f'tau = {taus.mean():.2f}')
-
-    # compute expected sparsity defect
-    total_bound = 0
-    total = 0
-    progbar = tqdm(data_loader)
-    for x_batch, y_batch in progbar:
-        total_bound += reconstructor.certify(x_batch.to(device)).item()
-        total += x_batch.shape[0]
-        progbar.set_postfix({'bound': total_bound / total})
-    defect = total_bound / total
-    print(f'defect = {defect:.2f}')
+    print(f'defect = {defects.mean():.2f}')
 
     # compute certified radius
     n = np.prod(x_adv.shape[1:])
     eta = .01
     sigma = 1.
-    rs = .5 * (taus * np.sqrt(n) - defect / (eta * sigma**2))
+    rs = np.maximum(0, .5 * (taus * np.sqrt(n) - defects / (eta * sigma)))
     print(f'radius = {rs.mean():.2f}')
 
     plt.hist(rs, bins='auto')
