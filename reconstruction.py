@@ -6,6 +6,8 @@ from utils import normalize
 
 from methods import FourierMethod, WaveletMethod, DualTreeMethod, ShearletMethod, DummyMethod
 
+from tqdm import trange
+
 def ensure_built(m):
     def wrapper(self, originals, *args):
         # build the method if necessary
@@ -94,9 +96,9 @@ class Reconstruction:
             return normalize(self.method.backward(coeffs))
 
     @ensure_built
-    def certify(self, originals, lam=.1, tol=1e-4, samples=1000):
+    def certify(self, originals, lam=.001, tol=1e-3, samples=10):
         avg_result = np.zeros(originals.shape[0])
-        for _ in range(samples):
+        for _ in trange(samples):
             # build the mask for the sensing operator
             mask = torch.bernoulli(torch.ones_like(originals) * self.q)
             phi = lambda x: torch.fft.fft2(x) * mask
@@ -111,8 +113,11 @@ class Reconstruction:
             b = self.method.forward(torch.zeros_like(originals).to(originals.device))
             u = self.method.forward(torch.zeros_like(originals).to(originals.device))
 
-            old_result, new_result = 0, np.inf
-            while abs(old_result - new_result) > tol:
+            d_prev = b.get().clone()
+            err = np.inf
+            while err > tol:
+                d_prev = d.get().clone()
+
                 u = d - b - orig
                 u.soft_thresh(lam)
                 u = u + orig
@@ -121,8 +126,11 @@ class Reconstruction:
                 d.soft_thresh(lam)
 
                 b = b + u - d
-                old_result, new_result = new_result, torch.sum((orig - d).norm())
+
+                err = abs(d.get() - d_prev).max()
             
-            avg_result += new_result / samples
-        
+            v = (orig.get() - d.get()).cpu().numpy()
+            v = v.reshape(v.shape[0], -1)
+            avg_result += np.linalg.norm(v, ord=1, axis=1) / samples
+
         return avg_result

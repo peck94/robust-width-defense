@@ -29,7 +29,6 @@ if __name__ == '__main__':
     parser.add_argument('-model', type=str, default='resnet50', help='model name')
     parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
-    parser.add_argument('-norm', default='Linf', choices=['L2', 'Linf'], help='perturbation norm')
 
     args = parser.parse_args()
 
@@ -53,20 +52,22 @@ if __name__ == '__main__':
 
     # load model
     if args.rb:
-        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm).to(device).eval()
+        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model='L2').to(device).eval()
     else:
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device).eval()
 
     # determine initial robustness and expected sparsity defect
-    adversary = AutoAttack(model, norm=args.norm, version='custom')
-    adversary.attacks_to_run = ['fab']
+    adversary = AutoAttack(model, norm='L2', version='standard', eps=1, device=device)
+
     taus = []
     defects = []
     progbar = tqdm(data_loader)
     for images, labels in progbar:
         x_adv = adversary.run_standard_evaluation(images, labels, bs=args.bs)
         taus.append(np.sqrt(np.square(images - x_adv).sum(axis=[1, 2, 3])))
-        defects.append(reconstructor.certify(images.to(device)).numpy())
+        defects.append(reconstructor.certify(images.to(device)))
+        if len(defects) == 10:
+            break
     taus = np.concatenate(taus)
     defects = np.concatenate(defects)
     print(f'tau = {taus.mean():.2f}')
