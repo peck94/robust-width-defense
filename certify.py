@@ -18,6 +18,9 @@ from tqdm import tqdm
 
 from autoattack import AutoAttack
 
+def get_radius(taus, defects, n, eta, sigma):
+    return np.maximum(0, .5 * (taus * np.sqrt(n) - defects / (eta * sigma)))
+
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
@@ -57,30 +60,41 @@ if __name__ == '__main__':
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device).eval()
 
     # determine initial robustness and expected sparsity defect
-    adversary = AutoAttack(model, norm='L2', version='standard', eps=1, device=device)
+    adversary = AutoAttack(model, norm='L2', version='custom', eps=2, device=device)
+    adversary.attacks_to_run = ['fab-t']
 
     taus = []
-    defects = []
+    defects, errs = [], []
     progbar = tqdm(data_loader)
     for images, labels in progbar:
         x_adv = adversary.run_standard_evaluation(images, labels, bs=args.bs)
         taus.append(np.sqrt(np.square(images - x_adv).sum(axis=[1, 2, 3])))
-        defects.append(reconstructor.certify(images.to(device)))
-        if len(defects) == 10:
-            break
+
+        mu, err = reconstructor.certify(images.to(device))
+        defects.append(mu)
+        errs.append(err)
     taus = np.concatenate(taus)
     defects = np.concatenate(defects)
+    errs = np.concatenate(errs)
     print(f'tau = {taus.mean():.2f}')
-    print(f'defect = {defects.mean():.2f}')
+    print(f'defect = {defects.mean():.2f} +- {errs.mean():.2f}')
 
     # compute certified radius
     n = np.prod(x_adv.shape[1:])
     eta = .01
     sigma = 1.
-    rs = np.maximum(0, .5 * (taus * np.sqrt(n) - defects / (eta * sigma)))
-    print(f'radius = {rs.mean():.2f}')
+
+    rs_min = get_radius(taus, defects + errs, n, eta, sigma)
+    rs = get_radius(taus, defects, n, eta, sigma)
+    rs_max = get_radius(taus, defects - errs, n, eta, sigma)
+
+    print(f'radius: {rs_min.mean():.2f} <= {rs.mean():.2f} <= {rs_max.mean():.2f}')
+
+    np.savez('radii.npz', rs=rs, rs_min=rs_min, rs_max=rs_max, taus=taus, defects=defects)
 
     plt.hist(rs, bins='auto')
+    plt.hist(rs_min, bins='auto', alpha=.5)
+    plt.hist(rs_max, bins='auto', alpha=.5)
     plt.xlabel('radius')
     plt.ylabel('count')
     plt.savefig(f'{args.model}_radii.pdf')

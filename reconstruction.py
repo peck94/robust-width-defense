@@ -96,9 +96,9 @@ class Reconstruction:
             return normalize(self.method.backward(coeffs))
 
     @ensure_built
-    def certify(self, originals, lam=.001, tol=1e-3, samples=10):
-        avg_result = np.zeros(originals.shape[0])
-        for _ in trange(samples):
+    def certify(self, originals, lam=1e-3, tol=1e-3, samples=100):
+        avg_result = np.zeros([samples, originals.shape[0]])
+        for i in trange(samples):
             # build the mask for the sensing operator
             mask = torch.bernoulli(torch.ones_like(originals) * self.q)
             phi = lambda x: torch.fft.fft2(x) * mask
@@ -131,6 +131,8 @@ class Reconstruction:
             
             v = (orig.get() - d.get()).cpu().numpy()
             v = v.reshape(v.shape[0], -1)
-            avg_result += np.linalg.norm(v, ord=1, axis=1) / samples
+            avg_result[i] = np.linalg.norm(v, ord=1, axis=1) / samples
 
-        return avg_result
+        mu = np.mean(avg_result, axis=0)
+        err = 1.96 * np.std(avg_result, axis=0) / np.sqrt(samples)
+        return mu, err
