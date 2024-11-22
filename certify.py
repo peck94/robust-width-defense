@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('-model', type=str, default='resnet50', help='model name')
     parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
+    parser.add_argument('-output', default='.', help='output data directory')
 
     args = parser.parse_args()
 
@@ -40,11 +41,14 @@ if __name__ == '__main__':
     print(f'Device: {device}')
 
     # load data
+    normalize = []
+    if not args.rb:
+        normalize = [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
                                               transform=transforms.Compose([
                                                   transforms.Resize(256),
                                                   transforms.CenterCrop(224),
-                                                  transforms.ToTensor()]))
+                                                  transforms.ToTensor()] + normalize))
     data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
     
     # load parameters
@@ -73,6 +77,11 @@ if __name__ == '__main__':
         mu, err = reconstructor.certify(images.to(device))
         defects.append(mu)
         errs.append(err)
+
+        np.savez(f'{args.output}/{args.model}_cert.npz',
+                 taus=np.concatenate(taus),
+                 defects=np.concatenate(defects),
+                 errs=np.concatenate(errs))
     taus = np.concatenate(taus)
     defects = np.concatenate(defects)
     errs = np.concatenate(errs)
@@ -90,11 +99,11 @@ if __name__ == '__main__':
 
     print(f'radius: {rs_min.mean():.2f} <= {rs.mean():.2f} <= {rs_max.mean():.2f}')
 
-    np.savez('radii.npz', rs=rs, rs_min=rs_min, rs_max=rs_max, taus=taus, defects=defects)
+    np.savez(f'{args.output}/{args.model}_radii.npz', rs=rs, rs_min=rs_min, rs_max=rs_max)
 
     plt.hist(rs, bins='auto')
     plt.hist(rs_min, bins='auto', alpha=.5)
     plt.hist(rs_max, bins='auto', alpha=.5)
     plt.xlabel('radius')
     plt.ylabel('count')
-    plt.savefig(f'{args.model}_radii.pdf')
+    plt.savefig(f'{args.output}/{args.model}_radii.pdf')
