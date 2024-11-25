@@ -4,6 +4,9 @@ class Coefficients:
     def __init__(self):
         pass
 
+    def clone(self):
+        return Coefficients(self.get())
+
     def get_threshold(self, lam):
         return lam
 
@@ -50,6 +53,9 @@ class DummyCoefficients(Coefficients):
 
     def get(self):
         return self.coeffs
+    
+    def clone(self):
+        return DummyCoefficients(self.get())
 
     def __add__(self, other):
         return self
@@ -68,6 +74,9 @@ class WaveletCoefficients(Coefficients):
         super().__init__()
 
         self.low, self.high = coeffs
+    
+    def clone(self):
+        return WaveletCoefficients(self.get())
     
     def hard_thresh(self, alpha):
         self.high = [self.ht(x, alpha) for x in self.high]
@@ -103,6 +112,9 @@ class DTCWTCoefficients(Coefficients):
 
         self.low, self.high = coeffs
     
+    def clone(self):
+        return DTCWTCoefficients(self.get())
+    
     def hard_thresh(self, alpha):
         self.high = [self.ht(x, alpha) for x in self.high]
     
@@ -136,6 +148,9 @@ class FourierCoefficients(Coefficients):
         super().__init__()
 
         self.coeffs = coeffs
+    
+    def clone(self):
+        return FourierCoefficients(self.get())
 
     def hard_thresh(self, alpha):
         self.coeffs = self.ht(self.coeffs, alpha)
@@ -167,6 +182,9 @@ class ShearletCoefficients(Coefficients):
 
         self.coeffs = coeffs
         self.system = system
+    
+    def clone(self):
+        return ShearletCoefficients(self.get())
     
     def get_threshold(self, alpha):
         weights = self.system.RMS * torch.ones_like(self.coeffs)
