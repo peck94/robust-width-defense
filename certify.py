@@ -19,7 +19,7 @@ from tqdm import tqdm
 from autoattack import AutoAttack
 
 def get_radius(taus, defects, n, eta, sigma):
-    return np.maximum(0, .5 * (taus * np.sqrt(n) - defects / (eta * sigma)))
+    return np.maximum(0, .5 * (taus * np.sqrt(n) - defects / (eta * sigma**2)))
 
 if __name__ == '__main__':
     # parse arguments
@@ -33,6 +33,11 @@ if __name__ == '__main__':
     parser.add_argument('-weights', type=str, default='IMAGENET1K_V2', help='model weights')
     parser.add_argument('-rb', action='store_true', default=False, help='use RobustBench models')
     parser.add_argument('-output', default='.', help='output data directory')
+    parser.add_argument('-plot', action='store_true', default=False, help='only plot existing results')
+    parser.add_argument('-norm', default='Linf', choices=['L2', 'Linf'], help='threat model')
+    parser.add_argument('-eta', type=float, default=.01, help='eta value')
+    parser.add_argument('-sigma', type=float, default=1, help='upper frame bound')
+    parser.add_argument('-eps', default=2, type=float, help='perturbation bound')
 
     args = parser.parse_args()
 
@@ -41,16 +46,13 @@ if __name__ == '__main__':
     print(f'Device: {device}')
 
     # load data
-    normalize = []
-    if not args.rb:
-        normalize = [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
     imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
-                                              transform=transforms.Compose([
-                                                  transforms.Resize(256),
-                                                  transforms.CenterCrop(224),
-                                                  transforms.ToTensor()] + normalize))
+                                            transform=transforms.Compose([
+                                                transforms.Resize(256),
+                                                transforms.CenterCrop(224),
+                                                transforms.ToTensor()]))
     data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
-    
+
     # load parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
     trial = study.trials[args.trial]
@@ -59,51 +61,73 @@ if __name__ == '__main__':
 
     # load model
     if args.rb:
-        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model='L2').to(device).eval()
+        model = rb.utils.load_model(args.model, dataset='imagenet', threat_model=args.norm).to(device).eval()
     else:
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device).eval()
 
-    # determine initial robustness and expected sparsity defect
-    adversary = AutoAttack(model, norm='L2', version='custom', eps=2, device=device)
-    adversary.attacks_to_run = ['fab-t']
+    if not args.plot:
+        # determine initial robustness and expected sparsity defect
+        adversary = AutoAttack(model, norm=args.norm, version='custom', eps=args.eps, device=device)
+        adversary.attacks_to_run = ['fab-t']
 
-    taus = []
-    defects, errs = [], []
-    progbar = tqdm(data_loader)
-    for images, labels in progbar:
-        x_adv = adversary.run_standard_evaluation(images, labels, bs=args.bs)
-        taus.append(np.sqrt(np.square(images - x_adv).sum(axis=[1, 2, 3])))
+        taus = []
+        defects, errs = [], []
+        progbar = tqdm(data_loader)
+        for images, labels in progbar:
+            x_adv = adversary.run_standard_evaluation(images, labels, bs=args.bs)
 
-        mu, err = reconstructor.certify(images.to(device))
-        defects.append(mu)
-        errs.append(err)
+            delta = (images.numpy() - x_adv.numpy()).reshape([images.shape[0], -1])
+            if args.norm == 'L2':
+                taus.append(np.sqrt(np.square(delta, axis=1)))
+            else:
+                taus.append(abs(delta).max(axis=1))
 
-        np.savez(f'{args.output}/{args.model}_cert.npz',
-                 taus=np.concatenate(taus),
-                 defects=np.concatenate(defects),
-                 errs=np.concatenate(errs))
-    taus = np.concatenate(taus)
-    defects = np.concatenate(defects)
-    errs = np.concatenate(errs)
-    print(f'tau = {taus.mean():.2f}')
-    print(f'defect = {defects.mean():.2f} +- {errs.mean():.2f}')
+            mu, err = reconstructor.certify(images.to(device))
+            defects.append(mu)
+            errs.append(err)
+
+            np.savez(f'{args.output}/{args.model}_cert.npz',
+                    taus=np.concatenate(taus),
+                    defects=np.concatenate(defects),
+                    errs=np.concatenate(errs))
+        taus = np.concatenate(taus)
+        defects = np.concatenate(defects)
+        errs = np.concatenate(errs)
+    else:
+        data = np.load(f'{args.output}/{args.model}_cert.npz')
+        taus = data['taus']
+        defects = data['defects']
+        errs = data['errs']
 
     # compute certified radius
-    n = np.prod(x_adv.shape[1:])
-    eta = .01
-    sigma = 1.
+    x_batch, _ = next(iter(data_loader))
+    n = np.prod(x_batch.shape[1:])
 
-    rs_min = get_radius(taus, defects + errs, n, eta, sigma)
-    rs = get_radius(taus, defects, n, eta, sigma)
-    rs_max = get_radius(taus, defects - errs, n, eta, sigma)
+    accs = []
+    count = 0
+    for x_batch, y_batch in tqdm(data_loader):
+        acc = rb.utils.clean_accuracy(model, x_batch, y_batch, batch_size=args.bs, device=device)
+        accs.append(acc)
 
-    print(f'radius: {rs_min.mean():.2f} <= {rs.mean():.2f} <= {rs_max.mean():.2f}')
+        count += x_batch.shape[0]
+        if count >= 1000:
+            break
+    acc = np.mean(accs)
 
-    np.savez(f'{args.output}/{args.model}_radii.npz', rs=rs, rs_min=rs_min, rs_max=rs_max)
+    rs = get_radius(taus, defects, n, args.eta, args.sigma)
+    print(f'Accuracy: {acc:.2%}')
+    print(f'tau = {taus.mean():.2f}')
+    print(f'defect = {defects.mean():.2f} +- {errs.mean():.2f}')
+    print(f'radius: {rs.mean():.2f}')
 
-    plt.hist(rs, bins='auto')
-    plt.hist(rs_min, bins='auto', alpha=.5)
-    plt.hist(rs_max, bins='auto', alpha=.5)
-    plt.xlabel('radius')
-    plt.ylabel('count')
+    np.savez(f'{args.output}/{args.model}_radii.npz', rs=rs)
+
+    zs = np.linspace(0, args.eps, 1000)
+    qs = np.array([(rs >= z).mean() for z in zs])
+
+    ax = plt.subplot()
+    ax.plot(zs, acc * qs)
+    ax.set_xlabel('epsilon')
+    ax.set_ylabel('certified accuracy')
+    ax.set_ylim(0, 1)
     plt.savefig(f'{args.output}/{args.model}_radii.pdf')

@@ -184,7 +184,7 @@ class ShearletCoefficients(Coefficients):
         self.system = system
     
     def clone(self):
-        return ShearletCoefficients(self.get())
+        return ShearletCoefficients(self.get(), self.system)
     
     def get_threshold(self, alpha):
         weights = self.system.RMS * torch.ones_like(self.coeffs)
