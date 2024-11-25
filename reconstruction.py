@@ -113,11 +113,9 @@ class Reconstruction:
             b = self.method.forward(torch.zeros_like(originals).to(originals.device))
             u = self.method.forward(torch.zeros_like(originals).to(originals.device))
 
-            d_prev = b.get().clone()
+            d_prev = b.clone()
             err = np.inf
             while err > tol:
-                d_prev = d.get().clone()
-
                 u = d - b - orig
                 u.soft_thresh(lam)
                 u = u + orig
@@ -127,11 +125,10 @@ class Reconstruction:
 
                 b = b + u - d
 
-                err = abs(d.get() - d_prev).max()
+                err = (d - d_prev).norm().max().item()
+                d_prev = d.clone()
             
-            v = (orig.get() - d.get()).cpu().numpy()
-            v = v.reshape(v.shape[0], -1)
-            avg_result[i] = np.linalg.norm(v, ord=1, axis=1) / samples
+            avg_result[i] = (orig - d).norm().cpu().numpy() / samples
 
         mu = np.mean(avg_result, axis=0)
         err = 1.96 * np.std(avg_result, axis=0) / np.sqrt(samples)
