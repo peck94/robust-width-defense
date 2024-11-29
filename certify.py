@@ -38,20 +38,14 @@ if __name__ == '__main__':
     parser.add_argument('-eta', type=float, default=.01, help='eta value')
     parser.add_argument('-sigma', type=float, default=1, help='upper frame bound')
     parser.add_argument('-eps', default=2, type=float, help='perturbation bound')
+    parser.add_argument('-acc', default=1, type=float, help='baseline accuracy')
+    parser.add_argument('-simplify', default=False, action='store_true', help='use simplified bound')
 
     args = parser.parse_args()
 
     # get device
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(f'Device: {device}')
-
-    # load data
-    imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
-                                            transform=transforms.Compose([
-                                                transforms.Resize(256),
-                                                transforms.CenterCrop(224),
-                                                transforms.ToTensor()]))
-    data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
 
     # load parameters
     study = optuna.load_study(study_name=args.name, storage=args.results)
@@ -66,6 +60,14 @@ if __name__ == '__main__':
         model = torchvision.models.get_model(args.model, weights=args.weights).to(device).eval()
 
     if not args.plot:
+        # load data
+        imagenet_data = torchvision.datasets.ImageNet(args.data, split='val',
+                                                transform=transforms.Compose([
+                                                    transforms.Resize(256),
+                                                    transforms.CenterCrop(224),
+                                                    transforms.ToTensor()]))
+        data_loader = torch.utils.data.DataLoader(imagenet_data, batch_size=args.bs, shuffle=True, num_workers=1)
+
         # determine initial robustness and expected sparsity defect
         adversary = AutoAttack(model, norm=args.norm, version='custom', eps=args.eps, device=device)
         adversary.attacks_to_run = ['fab-t']
@@ -100,22 +102,13 @@ if __name__ == '__main__':
         errs = data['errs']
 
     # compute certified radius
-    x_batch, _ = next(iter(data_loader))
-    n = np.prod(x_batch.shape[1:])
+    n = 224*224*3
 
-    accs = []
-    count = 0
-    for x_batch, y_batch in tqdm(data_loader):
-        acc = rb.utils.clean_accuracy(model, x_batch, y_batch, batch_size=args.bs, device=device)
-        accs.append(acc)
-
-        count += x_batch.shape[0]
-        if count >= 1000:
-            break
-    acc = np.mean(accs)
-
-    rs = get_radius(taus, defects, n, args.eta, args.sigma)
-    print(f'Accuracy: {acc:.2%}')
+    if args.simplify:
+        rs = get_radius(taus, np.ones_like(defects), n, args.eta, args.sigma)
+    else:
+        rs = get_radius(taus, defects, n, args.eta, args.sigma)
+    print(f'Accuracy: {args.acc:.2%}')
     print(f'tau = {taus.mean():.2f}')
     print(f'defect = {defects.mean():.2f} +- {errs.mean():.2f}')
     print(f'radius: {rs.mean():.2f}')
@@ -126,7 +119,7 @@ if __name__ == '__main__':
     qs = np.array([(rs >= z).mean() for z in zs])
 
     ax = plt.subplot()
-    ax.plot(zs, acc * qs)
+    ax.plot(zs, args.acc * qs)
     ax.set_xlabel('epsilon')
     ax.set_ylabel('certified accuracy')
     ax.set_ylim(0, 1)
