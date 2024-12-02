@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
             delta = (images.numpy() - x_adv.numpy()).reshape([images.shape[0], -1])
             if args.norm == 'L2':
-                taus.append(np.sqrt(np.square(delta, axis=1)))
+                taus.append(np.linalg.norm(delta, axis=1))
             else:
                 taus.append(abs(delta).max(axis=1))
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     n = 224*224*3
 
     if args.simplify:
-        rs = get_radius(taus, np.ones_like(defects), n, args.eta, args.sigma)
+        rs = np.sqrt(n) * taus / 2
     else:
         rs = get_radius(taus, defects, n, args.eta, args.sigma)
     print(f'Accuracy: {args.acc:.2%}')
@@ -115,12 +115,15 @@ if __name__ == '__main__':
 
     np.savez(f'{args.output}/{args.model}_radii.npz', rs=rs)
 
-    zs = np.linspace(0, args.eps, 1000)
+    zs = np.linspace(0, np.quantile(rs, .95), 1000)
     qs = np.array([(rs >= z).mean() for z in zs])
+    ts = np.array([(taus >= z).mean() for z in zs])
 
     ax = plt.subplot()
-    ax.plot(zs, args.acc * qs)
+    ax.plot(zs, args.acc * qs, label='robust')
+    ax.plot(zs, args.acc * ts, label='original')
     ax.set_xlabel('epsilon')
     ax.set_ylabel('certified accuracy')
     ax.set_ylim(0, 1)
+    plt.legend()
     plt.savefig(f'{args.output}/{args.model}_radii.pdf')
